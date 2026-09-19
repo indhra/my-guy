@@ -56,3 +56,10 @@ not rewrite its own policy or install capabilities autonomously.
 - Do not execute edits or external actions without approval.
 - Do not claim consensus when a specialist was not consulted.
 - Do not make provider-specific behavior part of the core contract.
+
+## Latest cycle
+
+- Added routing evaluation with 16 baseline cases passing before sync work.
+- Added synchronization that marks missing capabilities stale without deleting
+  them.
+- Current focused test count: `17 passed`.
