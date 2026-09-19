@@ -27,6 +27,7 @@ asks for approval before execution.
    This improves recall without making embeddings mandatory.
 7. **Convene mode** — bounded specialist fan-out, preserved disagreement,
    timeout/failure handling, and explicit synthesis. No fake consensus.
+   Pure synthesis contract is now implemented; adapter fan-out remains later.
 8. **Approval and execution boundary** — implement an adapter-neutral approval
    protocol. Only adapters may invoke tools, and only after approval.
 9. **Harness adapters** — Codex, Claude, OpenCode, OpenRouter, and project

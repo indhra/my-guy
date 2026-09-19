@@ -21,6 +21,8 @@ class SemanticSearch:
     """
 
     def __init__(self, backend: str = "lexical-fallback") -> None:
+        if backend != "lexical-fallback":
+            raise ValueError("only the lexical-fallback backend is implemented")
         self.backend = backend
 
     def search(

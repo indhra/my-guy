@@ -1,4 +1,5 @@
 from .catalog import CapabilityCatalog
+from .convene import ConveneResult, SpecialistResponse, synthesize
 from .core import route
 from .discovery import discover_skills
 from .evaluation import EvaluationCase, EvaluationReport, evaluate
@@ -10,6 +11,7 @@ from .semantic import SearchHit, SemanticSearch
 __all__ = [
     "Capability",
     "CapabilityCatalog",
+    "ConveneResult",
     "ApprovalRequired",
     "RouteDecision",
     "discover_skills",
@@ -23,5 +25,7 @@ __all__ = [
     "sync_skill_roots",
     "SearchHit",
     "SemanticSearch",
+    "SpecialistResponse",
+    "synthesize",
 ]
 from .approval import ApprovalRequired, require_approval

@@ -66,4 +66,7 @@ not rewrite its own policy or install capabilities autonomously.
 
 - Added a dependency-free semantic-search interface with lexical fallback,
   ranking evidence, and an explicit backend label.
+- Added pure convene-mode synthesis that preserves responses, dissent, and
+  unavailable specialists without invoking agents itself.
 - Current focused test count after semantic search: `19 passed`.
+- Current focused test count after convene mode: `23 passed`.
