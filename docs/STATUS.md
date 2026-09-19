@@ -52,12 +52,14 @@ only, SQL writes use parameters, and approval defaults to true.
 
 ## Next queue
 
-1. Ingest discovered skills into the catalog automatically.
-2. Add explicit trust/provenance validation and stale-entry handling.
-3. Add semantic-search adapter behind the same catalog contract.
-4. Add bounded convene-mode synthesis with disagreement preserved.
-5. Add harness adapters and installation/rollback tests.
-6. Add adversarial routing fixtures and approval-gate tests.
+1. Trust hardening and review fixes.
+2. Routing evaluation and confidence calibration.
+3. Automatic discovery synchronization and stale-entry handling.
+4. Optional semantic-search backend.
+5. Bounded convene-mode synthesis.
+6. Adapter-neutral approval protocol.
+7. Codex, Claude, OpenCode, OpenRouter, and project adapters.
+8. Adversarial review, release, install, upgrade, disable, and rollback tests.
 
 ## Non-goals still in force
 
