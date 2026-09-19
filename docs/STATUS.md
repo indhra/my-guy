@@ -70,6 +70,9 @@ not rewrite its own policy or install capabilities autonomously.
   unavailable specialists without invoking agents itself.
 - Added an adapter-neutral execution boundary with trust checks, allowlisted
   invocations, matching approval tokens, and no shell execution in core.
+- Added the first Codex adapter as a structured handoff renderer; it does not
+  spawn Codex or claim execution.
 - Current focused test count after semantic search: `19 passed`.
 - Current focused test count after convene mode: `23 passed`.
 - Current focused test count after execution boundary: `27 passed`.
+- Current focused test count after Codex adapter: `28 passed`.

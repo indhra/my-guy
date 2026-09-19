@@ -33,6 +33,8 @@ asks for approval before execution.
    Core allowlisting and matching approval tokens are now implemented.
 9. **Harness adapters** — Codex, Claude, OpenCode, OpenRouter, and project
    instruction surfaces. Each adapter runs the same fixtures and remains thin.
+   Codex structured handoff adapter is now implemented; provider execution is
+   intentionally outside the core.
 10. **Adversarial review and release** — prompt-injection tests, architecture
     review, security review, install/rollback tests, documentation, and a
     versioned release.
