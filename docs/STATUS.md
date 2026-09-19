@@ -76,9 +76,12 @@ not rewrite its own policy or install capabilities autonomously.
   allowlist contract.
 - Added OpenCode and OpenRouter structured handoff adapters without guessing
   provider command syntax or making network calls.
+- Added adversarial fixtures for prompt-injection metadata, forged approvals,
+  and invocation allowlist bypasses.
 - Current focused test count after semantic search: `19 passed`.
 - Current focused test count after convene mode: `23 passed`.
 - Current focused test count after execution boundary: `27 passed`.
 - Current focused test count after Codex adapter: `28 passed`.
 - Current focused test count after Claude adapter: `29 passed`.
 - Current focused test count after all four adapters: `31 passed`.
+- Current focused test count after adversarial fixtures: `34 passed`.
