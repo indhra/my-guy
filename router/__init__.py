@@ -4,7 +4,16 @@ from .core import route
 from .discovery import discover_skills
 from .evaluation import EvaluationCase, EvaluationReport, evaluate
 from .execution import ApprovalToken, InvocationAdapter, execute
-from .adapters import ClaudeAdapter, ClaudeHandoff, CodexAdapter, CodexHandoff
+from .adapters import (
+    ClaudeAdapter,
+    ClaudeHandoff,
+    CodexAdapter,
+    CodexHandoff,
+    OpenCodeAdapter,
+    OpenCodeHandoff,
+    OpenRouterAdapter,
+    OpenRouterHandoff,
+)
 from .models import Capability, RouteDecision
 from .registry import load_registry
 from .sync import sync_capabilities, sync_skill_roots
@@ -27,6 +36,10 @@ __all__ = [
     "CodexHandoff",
     "ClaudeAdapter",
     "ClaudeHandoff",
+    "OpenCodeAdapter",
+    "OpenCodeHandoff",
+    "OpenRouterAdapter",
+    "OpenRouterHandoff",
     "load_registry",
     "route",
     "require_approval",
