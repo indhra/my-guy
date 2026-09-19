@@ -24,7 +24,12 @@ def discover_skills(roots: list[str | Path]) -> tuple[Capability, ...]:
         if not root_path.exists():
             continue
         for path in sorted(root_path.rglob("SKILL.md")):
-            metadata = _frontmatter(path.read_text(encoding="utf-8", errors="replace"))
+            if path.is_symlink():
+                continue
+            try:
+                metadata = _frontmatter(path.read_text(encoding="utf-8", errors="replace"))
+            except OSError:
+                continue
             name = metadata.get("name")
             description = metadata.get("description")
             if not name or not description:

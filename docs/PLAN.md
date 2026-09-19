@@ -65,3 +65,10 @@ invocation reference, and trust level. Search has no hidden top-N cutoff;
 callers choose a limit when they want one. The first backend is SQLite with
 transparent lexical scoring. Future semantic search must return the same entry
 shape plus evidence for its ranking.
+
+## Measured evolution
+
+Collect opt-in route outcomes, user corrections, specialist usefulness,
+disagreement, and failure reasons. Recalibrate thresholds and registry
+metadata through reviewed, versioned, reversible changes. The router must not
+rewrite its own policy or install capabilities autonomously.

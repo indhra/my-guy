@@ -3,6 +3,9 @@ from collections.abc import Iterable
 
 from .models import Capability, RouteDecision
 
+MIN_RECOMMEND_CONFIDENCE = 0.7
+TRUSTED_FOR_ROUTING = frozenset({"verified", "local"})
+
 
 def _tokens(text: str) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", text.lower()))
@@ -31,22 +34,42 @@ def route(request: str, capabilities: Iterable[Capability]) -> RouteDecision:
             reason="No registered capability matched the request.",
             confidence=0.0,
         )
-
+    trusted = [item for item in scored if item[1].trust in TRUSTED_FOR_ROUTING]
+    if not trusted:
+        return RouteDecision(
+            status="clarify",
+            request=request,
+            candidates=tuple(item[1].id for item in scored),
+            reason="Only unverified capabilities matched; verify provenance before routing.",
+            confidence=0.0,
+        )
+    scored = trusted
     selected = [item for item in scored if item[0] == scored[0][0]]
     if len(selected) == 1:
         score, capability, matched = selected[0]
         confidence = min(0.95, 0.45 + (0.15 * score))
+        if confidence < MIN_RECOMMEND_CONFIDENCE:
+            return RouteDecision(
+                status="clarify",
+                request=request,
+                candidates=(capability.id,),
+                reason=f"Low-confidence match for {capability.id}; clarify before routing.",
+                confidence=confidence,
+            )
         return RouteDecision(
             status="recommend",
             request=request,
             candidates=(capability.id,),
-            reason=f"Matched {', '.join(sorted(matched))}; invoke {capability.invocation}.",
+            reason=(
+                f"Matched {', '.join(sorted(matched))}; source={capability.source}; "
+                f"invoke {capability.invocation}."
+            ),
             confidence=confidence,
         )
 
     candidate_ids = tuple(item[1].id for item in scored)
     evidence = "; ".join(
-        f"{item[1].id}: {', '.join(sorted(item[2]))}" for item in scored
+        f"{item[1].id} (source={item[1].source}): {', '.join(sorted(item[2]))}" for item in scored
     )
     return RouteDecision(
         status="convene",

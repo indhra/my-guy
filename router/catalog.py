@@ -30,6 +30,18 @@ class CapabilityCatalog:
         self.connection.close()
 
     def upsert(self, capabilities: Iterable[Capability]) -> None:
+        capabilities = tuple(capabilities)
+        seen: dict[str, str] = {}
+        for capability in capabilities:
+            prior_source = seen.get(capability.id)
+            if prior_source and prior_source != capability.source:
+                raise ValueError(f"capability id collision across sources: {capability.id}")
+            seen[capability.id] = capability.source
+            existing = self.connection.execute(
+                "SELECT source FROM capabilities WHERE id = ?", (capability.id,)
+            ).fetchone()
+            if existing and existing["source"] != capability.source:
+                raise ValueError(f"capability id collision across sources: {capability.id}")
         rows = [
             (
                 capability.id,
@@ -59,14 +71,19 @@ class CapabilityCatalog:
 
     def search(self, query: str, limit: int | None = None) -> tuple[Capability, ...]:
         """Return all matching entries unless the caller explicitly sets a limit."""
+        if limit is not None and limit < 0:
+            raise ValueError("limit must be non-negative or None")
         tokens = set(re.findall(r"[a-z0-9]+", query.lower()))
         rows = self.connection.execute("SELECT * FROM capabilities").fetchall()
         ranked: list[tuple[int, sqlite3.Row]] = []
         for row in rows:
-            searchable = " ".join(
-                [row["id"], row["description"], row["domains"], row["triggers"]]
-            ).lower()
-            score = sum(1 for token in tokens if token in searchable)
+            searchable = set(
+                re.findall(
+                    r"[a-z0-9]+",
+                    " ".join([row["id"], row["description"], row["domains"], row["triggers"]]).lower(),
+                )
+            )
+            score = len(tokens.intersection(searchable))
             if score:
                 ranked.append((score, row))
         ranked.sort(key=lambda item: (-item[0], item[1]["id"]))

@@ -67,3 +67,6 @@ only, SQL writes use parameters, and approval defaults to true.
 - Do not execute edits or external actions without approval.
 - Do not claim consensus when a specialist was not consulted.
 - Do not make provider-specific behavior part of the core contract.
+
+Evolution is a later phase: opt-in feedback, reviewed recalibration, versioned
+changes, and no autonomous policy or capability installation.

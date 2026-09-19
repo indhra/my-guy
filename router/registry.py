@@ -14,6 +14,7 @@ def load_registry(path: str | Path) -> tuple[Capability, ...]:
             domains=tuple(record["domains"]),
             triggers=tuple(record["triggers"]),
             invocation=record["invocation"],
+            trust=record.get("trust", "unverified"),
         )
         for record in records
     )

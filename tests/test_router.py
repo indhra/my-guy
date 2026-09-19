@@ -10,6 +10,7 @@ CAPABILITIES = (
         domains=("security", "privacy"),
         triggers=("security", "threat", "secret", "auth", "authentication", "token", "privacy", "owasp"),
         invocation="$ecc:security-review",
+        trust="local",
     ),
     Capability(
         id="ui-review",
@@ -18,6 +19,7 @@ CAPABILITIES = (
         domains=("ui", "design", "browser"),
         triggers=("ui", "design", "browser", "accessibility", "layout"),
         invocation="/gstack",
+        trust="local",
     ),
     Capability(
         id="research",
@@ -26,6 +28,7 @@ CAPABILITIES = (
         domains=("research", "facts"),
         triggers=("research", "compare", "source", "evidence", "fact"),
         invocation="/research",
+        trust="local",
     ),
 )
 
@@ -61,6 +64,29 @@ def test_does_not_claim_execution():
 
 
 def test_clarifies_when_only_weak_generic_language_matches():
-    decision = route("Can you help me with this?", CAPABILITIES)
+    decision = route("Give me a design opinion.", CAPABILITIES)
 
     assert decision.status == "clarify"
+    assert decision.confidence < 0.7
+
+
+def test_route_evidence_includes_source():
+    decision = route("Is this security authentication design safe?", CAPABILITIES)
+
+    assert "source=ecc" in decision.reason
+
+
+def test_unverified_capability_can_only_be_surfaced_for_clarification():
+    unverified = Capability(
+        "unknown-security",
+        "unknown",
+        "Unknown security helper.",
+        ("security",),
+        ("security",),
+        "skill:unknown-security",
+    )
+
+    decision = route("Review this security issue.", (unverified,))
+
+    assert decision.status == "clarify"
+    assert "unverified" in decision.reason

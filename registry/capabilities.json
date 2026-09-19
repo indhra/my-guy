@@ -5,7 +5,8 @@
     "description": "Reviews threats, secrets, auth, and privacy risks.",
     "domains": ["security", "privacy"],
     "triggers": ["security", "threat", "secret", "auth", "authentication", "token", "privacy", "owasp"],
-    "invocation": "$ecc:security-review"
+    "invocation": "$ecc:security-review",
+    "trust": "local"
   },
   {
     "id": "ui-review",
@@ -13,7 +14,8 @@
     "description": "Reviews visual design, browser behavior, and accessibility.",
     "domains": ["ui", "design", "browser"],
     "triggers": ["ui", "design", "browser", "accessibility", "layout"],
-    "invocation": "/gstack"
+    "invocation": "/gstack",
+    "trust": "local"
   },
   {
     "id": "research",
@@ -21,6 +23,7 @@
     "description": "Researches a question against high-trust primary sources.",
     "domains": ["research", "facts"],
     "triggers": ["research", "compare", "source", "evidence", "fact"],
-    "invocation": "/research"
+    "invocation": "/research",
+    "trust": "local"
   }
 ]
