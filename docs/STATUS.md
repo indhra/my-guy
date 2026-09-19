@@ -72,7 +72,10 @@ not rewrite its own policy or install capabilities autonomously.
   invocations, matching approval tokens, and no shell execution in core.
 - Added the first Codex adapter as a structured handoff renderer; it does not
   spawn Codex or claim execution.
+- Added the Claude Code structured handoff adapter with the same approval and
+  allowlist contract.
 - Current focused test count after semantic search: `19 passed`.
 - Current focused test count after convene mode: `23 passed`.
 - Current focused test count after execution boundary: `27 passed`.
 - Current focused test count after Codex adapter: `28 passed`.
+- Current focused test count after Claude adapter: `29 passed`.
