@@ -1,0 +1,26 @@
+[
+  {
+    "id": "security-review",
+    "source": "ecc",
+    "description": "Reviews threats, secrets, auth, and privacy risks.",
+    "domains": ["security", "privacy"],
+    "triggers": ["security", "threat", "secret", "auth", "authentication", "token", "privacy", "owasp"],
+    "invocation": "$ecc:security-review"
+  },
+  {
+    "id": "ui-review",
+    "source": "gstack",
+    "description": "Reviews visual design, browser behavior, and accessibility.",
+    "domains": ["ui", "design", "browser"],
+    "triggers": ["ui", "design", "browser", "accessibility", "layout"],
+    "invocation": "/gstack"
+  },
+  {
+    "id": "research",
+    "source": "matt-pocock",
+    "description": "Researches a question against high-trust primary sources.",
+    "domains": ["research", "facts"],
+    "triggers": ["research", "compare", "source", "evidence", "fact"],
+    "invocation": "/research"
+  }
+]
