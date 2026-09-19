@@ -15,12 +15,14 @@ Branch: `work/router-foundation`
 - Added `recommend`, `clarify`, and `convene` routing outcomes.
 - Added trust filtering, collision checks, exact token matching, confidence
   gating, and an approval helper.
+- Added reusable routing evaluation cases with per-case accuracy and
+  confidence bounds.
 
 ## Review result
 
 - Initial code review findings were fixed through the hardening cycle.
 - Security review closed unverified influence at the core route boundary.
-- Final focused test run: `15 passed`.
+- Final focused test run: `16 passed`.
 - Bytecode compilation was attempted, but this environment disallows writing
   `__pycache__`; that is an environment limitation, not a test failure.
 
@@ -34,8 +36,7 @@ No execution adapter should be added until adapter-level approval tests exist.
 
 ## Next queue
 
-1. Routing evaluation and confidence calibration.
-2. Automatic discovery synchronization and stale-entry handling.
+1. Automatic discovery synchronization and stale-entry handling.
 3. Optional semantic-search backend.
 4. Bounded convene-mode synthesis with preserved disagreement.
 5. Adapter-neutral approval protocol and execution boundary.
