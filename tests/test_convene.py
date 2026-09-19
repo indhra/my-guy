@@ -31,5 +31,13 @@ def test_convene_preserves_strongest_dissent_without_fake_consensus():
 def test_convene_reports_unavailable_when_all_specialists_fail():
     result = synthesize([SpecialistResponse("security", "ship", available=False)])
 
-    assert result.status == "unavailable"
+    assert result.status == "insufficient-evidence"
+    assert result.consensus is None
+    assert len(result.responses) == 1
+
+
+def test_convene_does_not_call_one_response_consensus():
+    result = synthesize([SpecialistResponse("security", "ship", confidence=0.99)])
+
+    assert result.status == "insufficient-evidence"
     assert result.consensus is None

@@ -3,6 +3,7 @@ from .convene import ConveneResult, SpecialistResponse, synthesize
 from .core import route
 from .discovery import discover_skills
 from .evaluation import EvaluationCase, EvaluationReport, evaluate
+from .execution import ApprovalToken, InvocationAdapter, execute
 from .models import Capability, RouteDecision
 from .registry import load_registry
 from .sync import sync_capabilities, sync_skill_roots
@@ -18,6 +19,9 @@ __all__ = [
     "EvaluationCase",
     "EvaluationReport",
     "evaluate",
+    "ApprovalToken",
+    "InvocationAdapter",
+    "execute",
     "load_registry",
     "route",
     "require_approval",

@@ -30,6 +30,7 @@ asks for approval before execution.
    Pure synthesis contract is now implemented; adapter fan-out remains later.
 8. **Approval and execution boundary** — implement an adapter-neutral approval
    protocol. Only adapters may invoke tools, and only after approval.
+   Core allowlisting and matching approval tokens are now implemented.
 9. **Harness adapters** — Codex, Claude, OpenCode, OpenRouter, and project
    instruction surfaces. Each adapter runs the same fixtures and remains thin.
 10. **Adversarial review and release** — prompt-injection tests, architecture
