@@ -78,6 +78,8 @@ not rewrite its own policy or install capabilities autonomously.
   provider command syntax or making network calls.
 - Added adversarial fixtures for prompt-injection metadata, forged approvals,
   and invocation allowlist bypasses.
+- Bound approval tokens to the exact request, route, capability, and
+  invocation after adapter review found replay risk.
 - Current focused test count after semantic search: `19 passed`.
 - Current focused test count after convene mode: `23 passed`.
 - Current focused test count after execution boundary: `27 passed`.
@@ -85,3 +87,4 @@ not rewrite its own policy or install capabilities autonomously.
 - Current focused test count after Claude adapter: `29 passed`.
 - Current focused test count after all four adapters: `31 passed`.
 - Current focused test count after adversarial fixtures: `34 passed`.
+- Current focused test count after approval binding: `34 passed`.

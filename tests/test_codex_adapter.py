@@ -12,7 +12,7 @@ def test_codex_adapter_renders_approved_handoff_without_execution():
         decision,
         capability,
         decision.request,
-        ApprovalToken.for_decision(decision),
+        ApprovalToken.for_execution(decision, capability, decision.request),
         adapter,
     )
 

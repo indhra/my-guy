@@ -11,12 +11,16 @@ class ApprovalToken:
     decision_digest: str
 
     @classmethod
-    def for_decision(cls, decision: RouteDecision) -> "ApprovalToken":
-        payload = "|".join((decision.request, *decision.candidates, decision.reason))
+    def for_execution(
+        cls, decision: RouteDecision, capability: Capability, request: str
+    ) -> "ApprovalToken":
+        payload = "|".join(
+            (decision.request, request, *decision.candidates, decision.reason, capability.id, capability.invocation)
+        )
         return cls(sha256(payload.encode("utf-8")).hexdigest())
 
-    def matches(self, decision: RouteDecision) -> bool:
-        return self == self.for_decision(decision)
+    def matches(self, decision: RouteDecision, capability: Capability, request: str) -> bool:
+        return self == self.for_execution(decision, capability, request)
 
 
 class InvocationAdapter(Protocol):
@@ -36,7 +40,9 @@ def execute(
     """Delegate only to an allowlisted adapter after trust and approval checks."""
     if capability.trust not in {"verified", "local"}:
         raise PermissionError("unverified capabilities cannot be executed")
-    if approval is None or not approval.matches(decision):
+    if capability.id not in decision.candidates:
+        raise PermissionError("capability is not one of the approved route candidates")
+    if approval is None or not approval.matches(decision, capability, request):
         raise ApprovalRequired("matching explicit approval is required before execution")
     if capability.invocation not in adapter.allowed_invocations:
         raise PermissionError("adapter does not allow this invocation")

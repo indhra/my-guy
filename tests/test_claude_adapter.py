@@ -10,7 +10,7 @@ def test_claude_adapter_renders_approved_handoff():
         decision,
         capability,
         decision.request,
-        ApprovalToken.for_decision(decision),
+        ApprovalToken.for_execution(decision, capability, decision.request),
         ClaudeAdapter(frozenset({"/research"})),
     )
 
