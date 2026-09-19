@@ -13,6 +13,7 @@ class Capability:
     domains: tuple[str, ...]
     triggers: tuple[str, ...]
     invocation: str
+    trust: str = "unverified"
 
 
 @dataclass(frozen=True)
