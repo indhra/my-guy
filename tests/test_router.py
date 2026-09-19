@@ -58,3 +58,9 @@ def test_does_not_claim_execution():
     decision = route("Fix the security issue now.", CAPABILITIES)
 
     assert decision.approval_required is True
+
+
+def test_clarifies_when_only_weak_generic_language_matches():
+    decision = route("Can you help me with this?", CAPABILITIES)
+
+    assert decision.status == "clarify"
