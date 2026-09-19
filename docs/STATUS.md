@@ -24,6 +24,26 @@ Working prototype, not production-ready. The code is transparent and locally
 tested, but it does not yet invoke specialists, perform semantic retrieval,
 verify external skills, or expose Codex/Claude/OpenCode/OpenRouter adapters.
 
+## Review findings (2026-09-20)
+
+Security review: **OPEN_THREATS**. Do not ship an execution adapter yet.
+
+- Invocation metadata is currently unconstrained and only displayed as text.
+- Discovered skill metadata is untrusted but still routable.
+- Registry trust values are not yet loaded or enforced.
+- Catalog search does not filter or rank by trust/provenance.
+- `approval_required` is a declaration, not an enforced gate.
+
+Code review also found: route evidence omits source, weak matches do not
+clarify, trust is discarded while loading JSON, duplicate IDs overwrite,
+negative limits are accepted, substring ranking is noisy, one unreadable skill
+can abort discovery, and caller-supplied trigger case is not normalized.
+
+These are queued as the next hardening cycle.
+
+Positive controls: routing performs no tool calls, discovery reads metadata
+only, SQL writes use parameters, and approval defaults to true.
+
 ## Review queue
 
 - Code-quality review.
