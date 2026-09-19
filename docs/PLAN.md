@@ -8,10 +8,10 @@ asks for approval before execution.
 
 ## Phases
 
-1. Define a capability registry and portable routing contract.
+1. Define a capability registry and portable routing contract. **Done**
 2. Build a deterministic fixture set for routing, ambiguity, consensus, and
    safety cases.
-3. Implement a read-only advisor mode.
+3. Implement a read-only advisor mode. **In progress**
 4. Add convene mode with bounded specialist fan-out and synthesis.
 5. Add thin adapters for Codex, Claude, OpenCode, OpenRouter, and project
    instruction files.
@@ -31,3 +31,11 @@ asks for approval before execution.
 - Low-confidence or conflicting routes ask a clarifying question.
 - Execution always stops at an explicit approval gate.
 - The same fixtures pass through every adapter.
+
+## Directory contract
+
+Each entry has a stable name, source, description, trigger vocabulary,
+invocation reference, and trust level. Search has no hidden top-N cutoff;
+callers choose a limit when they want one. The first backend is SQLite with
+transparent lexical scoring. Future semantic search must return the same entry
+shape plus evidence for its ranking.
