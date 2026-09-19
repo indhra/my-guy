@@ -5,6 +5,7 @@ from .evaluation import EvaluationCase, EvaluationReport, evaluate
 from .models import Capability, RouteDecision
 from .registry import load_registry
 from .sync import sync_capabilities, sync_skill_roots
+from .semantic import SearchHit, SemanticSearch
 
 __all__ = [
     "Capability",
@@ -20,5 +21,7 @@ __all__ = [
     "require_approval",
     "sync_capabilities",
     "sync_skill_roots",
+    "SearchHit",
+    "SemanticSearch",
 ]
 from .approval import ApprovalRequired, require_approval

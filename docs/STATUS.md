@@ -63,3 +63,7 @@ not rewrite its own policy or install capabilities autonomously.
 - Added synchronization that marks missing capabilities stale without deleting
   them.
 - Current focused test count: `17 passed`.
+
+- Added a dependency-free semantic-search interface with lexical fallback,
+  ranking evidence, and an explicit backend label.
+- Current focused test count after semantic search: `19 passed`.

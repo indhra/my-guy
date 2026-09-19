@@ -38,7 +38,7 @@ def sync_capabilities(
         ).fetchall()
     else:
         known = catalog.connection.execute("SELECT id FROM capability_observations").fetchall()
-    return tuple(row["id"] for row in known)
+    return tuple(sorted(row["id"] for row in known))
 
 
 def sync_skill_roots(
