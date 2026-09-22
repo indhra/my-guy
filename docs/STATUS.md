@@ -1,90 +1,38 @@
 # Agent Router Status
 
-Updated: 2026-09-20
+Updated: 2026-09-22
 Branch: `work/router-foundation`
 
-## Completed
+## Delivered
 
-- Researched and verified upstream GStack, Matt Pocock skills, and ECC.
-- Confirmed their routers are bounded to their own ecosystems.
-- Created a standalone project with branch and Git history.
-- Defined the harness-neutral router goal and approval boundary.
-- Added a transparent `Capability` model and checked-in seed registry.
-- Added read-only `SKILL.md` discovery with source provenance.
-- Added a SQLite-backed telephone directory (`CapabilityCatalog`).
-- Added `recommend`, `clarify`, and `convene` routing outcomes.
-- Added trust filtering, collision checks, exact token matching, confidence
-  gating, and an approval helper.
-- Added reusable routing evaluation cases with per-case accuracy and
-  confidence bounds.
+- Harness-neutral capability model, checked-in registry, and SQLite telephone directory.
+- Read-only, bounded `SKILL.md` discovery with multiline metadata support, stable namespaces, collision protection, and unverified-by-default roots.
+- Transparent routing with `clarify`, `recommend`, and `convene` outcomes.
+- Trust filtering, confidence gates, quorum synthesis, visible failures, and preserved dissent.
+- Exact execution binding, adapter allowlists, and structured Codex, Claude, OpenCode, and OpenRouter handoffs.
+- `my-guy` CLI and portable front-door skill.
+- Reversible install, upgrade, disable, and rollback for local skill hosts.
+- Opt-in, raw-request-free feedback ledger producing review-only proposals.
+- Packaging metadata, MIT license, CI matrix, architecture and operations documentation.
+- Adversarial coverage for malicious metadata, forged/replayed approval, shadowing, symlink targets, and privacy defaults.
 
-## Review result
+## Evidence
 
-- Initial code review findings were fixed through the hardening cycle.
-- Security review closed unverified influence at the core route boundary.
-- Final focused test run: `16 passed`.
-- Bytecode compilation was attempted, but this environment disallows writing
-  `__pycache__`; that is an environment limitation, not a test failure.
+- Current local suite: `58 passed`.
+- Live clean-install CLI smoke returns `clarify` for an unverified seed; an explicitly trusted installed security skill returns `recommend`.
+- Provider adapters do not start subprocesses or perform network calls.
 
-## Current verdict
+## Honest limits before a stable release
 
-Working prototype, not production-ready. It does not yet invoke specialists,
-perform semantic retrieval, synchronize installed capabilities, or expose
-Codex, Claude, OpenCode, or OpenRouter adapters.
+- No real provider execution or identity verification.
+- No universal one-click installation because each host owns a different skill root and OpenRouter is not a skill host.
+- No embedding backend; semantic interface labels itself `lexical-fallback`.
+- No production telemetry backend or fleet administration.
+- Visual design review is not applicable: this repository has no rendered UI.
+- Alpha until independent end-to-end, architecture, and security reviews close all high-severity findings.
 
-No execution adapter should be added until adapter-level approval tests exist.
+## Next release gates
 
-## Next queue
-
-1. Automatic discovery synchronization and stale-entry handling.
-3. Optional semantic-search backend.
-4. Bounded convene-mode synthesis with preserved disagreement.
-5. Adapter-neutral approval protocol and execution boundary.
-6. Codex, Claude, OpenCode, OpenRouter, and project adapters.
-7. Adversarial review, release, install, upgrade, disable, and rollback tests.
-
-## Measured evolution
-
-Later phases will collect opt-in route outcomes, user corrections, specialist
-usefulness, disagreement, and failure reasons. Changes to thresholds and
-registry metadata will be reviewed, versioned, and reversible. The router will
-not rewrite its own policy or install capabilities autonomously.
-
-## Non-goals
-
-- Do not replace specialist skills.
-- Do not execute edits or external actions without approval.
-- Do not claim consensus when a specialist was not consulted.
-- Do not make provider-specific behavior part of the core contract.
-
-## Latest cycle
-
-- Added routing evaluation with 16 baseline cases passing before sync work.
-- Added synchronization that marks missing capabilities stale without deleting
-  them.
-- Current focused test count: `17 passed`.
-
-- Added a dependency-free semantic-search interface with lexical fallback,
-  ranking evidence, and an explicit backend label.
-- Added pure convene-mode synthesis that preserves responses, dissent, and
-  unavailable specialists without invoking agents itself.
-- Added an adapter-neutral execution boundary with trust checks, allowlisted
-  invocations, matching approval tokens, and no shell execution in core.
-- Added the first Codex adapter as a structured handoff renderer; it does not
-  spawn Codex or claim execution.
-- Added the Claude Code structured handoff adapter with the same approval and
-  allowlist contract.
-- Added OpenCode and OpenRouter structured handoff adapters without guessing
-  provider command syntax or making network calls.
-- Added adversarial fixtures for prompt-injection metadata, forged approvals,
-  and invocation allowlist bypasses.
-- Bound approval tokens to the exact request, route, capability, and
-  invocation after adapter review found replay risk.
-- Current focused test count after semantic search: `19 passed`.
-- Current focused test count after convene mode: `23 passed`.
-- Current focused test count after execution boundary: `27 passed`.
-- Current focused test count after Codex adapter: `28 passed`.
-- Current focused test count after Claude adapter: `29 passed`.
-- Current focused test count after all four adapters: `31 passed`.
-- Current focused test count after adversarial fixtures: `34 passed`.
-- Current focused test count after approval binding: `34 passed`.
+1. Rebuild and install final release artifacts.
+2. Run the GStack design-review preamble and confirm the documented no-UI scope.
+3. Commit on the feature branch and open a pull request when a remote is available.

@@ -46,7 +46,7 @@ def test_routes_multi_domain_request_to_convene():
     decision = route("Research the security and privacy tradeoffs of this UI design.", CAPABILITIES)
 
     assert decision.status == "convene"
-    assert decision.candidates == ("security-review", "ui-review", "research")
+    assert decision.candidates == ("security-review", "ui-review")
 
 
 def test_asks_for_clarity_when_no_capability_matches():

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from hashlib import sha256
+import json
 from typing import Protocol
 
 from .approval import ApprovalRequired
@@ -14,8 +15,19 @@ class ApprovalToken:
     def for_execution(
         cls, decision: RouteDecision, capability: Capability, request: str
     ) -> "ApprovalToken":
-        payload = "|".join(
-            (decision.request, request, *decision.candidates, decision.reason, capability.id, capability.invocation)
+        payload = json.dumps(
+            {
+                "capability_id": capability.id,
+                "candidates": decision.candidates,
+                "decision_request": decision.request,
+                "invocation": capability.invocation,
+                "reason": decision.reason,
+                "request": request,
+                "status": decision.status,
+            },
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
         )
         return cls(sha256(payload.encode("utf-8")).hexdigest())
 
@@ -40,6 +52,8 @@ def execute(
     """Delegate only to an allowlisted adapter after trust and approval checks."""
     if capability.trust not in {"verified", "local"}:
         raise PermissionError("unverified capabilities cannot be executed")
+    if decision.status == "clarify":
+        raise PermissionError("clarification decisions cannot be executed")
     if capability.id not in decision.candidates:
         raise PermissionError("capability is not one of the approved route candidates")
     if approval is None or not approval.matches(decision, capability, request):

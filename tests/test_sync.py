@@ -13,4 +13,15 @@ def test_sync_marks_missing_entries_stale_without_deleting_them():
 
     assert stale == ("second",)
     assert {entry.id for entry in catalog.search("second")} == {"second"}
+    assert {entry.id for entry in catalog.active()} == {"first"}
+    catalog.close()
+
+
+def test_sync_reconciles_skill_relocation_without_collision():
+    catalog = CapabilityCatalog()
+    old = Capability("review", "/old/review", "Review", (), ("review",), "skill:review")
+    new = Capability("review", "/new/review", "Review", (), ("review",), "skill:review")
+    sync_capabilities(catalog, [old])
+    assert sync_capabilities(catalog, [new]) == ()
+    assert catalog.active()[0].source == "/new/review"
     catalog.close()

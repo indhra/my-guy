@@ -9,7 +9,7 @@ def test_loads_checked_in_registry():
 
     assert {capability.id for capability in registry} == {
         "security-review",
-        "ui-review",
+        "design-review",
         "research",
     }
 
@@ -34,7 +34,7 @@ def test_catalog_search_returns_all_matches_without_an_implicit_limit():
 def test_registry_preserves_trust_and_rejects_source_collisions():
     catalog = CapabilityCatalog()
     catalog.upsert(load_registry(Path(__file__).parents[1] / "registry" / "capabilities.json"))
-    assert catalog.search("security")[0].trust == "local"
+    assert catalog.search("security")[0].trust == "unverified"
 
     from router.models import Capability
 

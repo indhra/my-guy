@@ -39,7 +39,7 @@ def route(request: str, capabilities: Iterable[Capability]) -> RouteDecision:
         return RouteDecision(
             status="clarify",
             request=request,
-            candidates=tuple(item[1].id for item in scored),
+            candidates=tuple(item[1].id for item in scored if item[0] == scored[0][0]),
             reason="Only unverified capabilities matched; verify provenance before routing.",
             confidence=0.0,
         )
@@ -67,9 +67,9 @@ def route(request: str, capabilities: Iterable[Capability]) -> RouteDecision:
             confidence=confidence,
         )
 
-    candidate_ids = tuple(item[1].id for item in scored)
+    candidate_ids = tuple(item[1].id for item in selected)
     evidence = "; ".join(
-        f"{item[1].id} (source={item[1].source}): {', '.join(sorted(item[2]))}" for item in scored
+        f"{item[1].id} (source={item[1].source}): {', '.join(sorted(item[2]))}" for item in selected
     )
     return RouteDecision(
         status="convene",

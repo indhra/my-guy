@@ -1,0 +1,28 @@
+# Architecture
+
+## Flow
+
+`request → discover/sync → rank → clarify/recommend/convene → approval → structured handoff`
+
+The package has four boundaries:
+
+1. **Directory:** checked-in seed capabilities plus read-only, namespaced `SKILL.md` discovery in SQLite.
+2. **Decision:** transparent lexical evidence, confidence gating, and trust filtering.
+3. **Coordination:** quorum-based synthesis that preserves unavailable specialists and dissent.
+4. **Execution boundary:** exact request/route/capability binding and adapter allowlists. Current adapters return typed handoffs only.
+
+## Trust model
+
+- `verified`: provenance was verified by a future verifier. No automatic verifier exists yet.
+- `local`: the operator explicitly trusts the source.
+- `unverified`: searchable, but unable to create an actionable route or execute.
+
+Installed roots default to `unverified`. Discovery content is data, never instructions. Stable namespaces and collision rejection prevent shadowing.
+
+## Approval model
+
+An approval binding covers the original decision, exact execution request, candidate set, reason, capability ID, and invocation. It prevents accidental replay onto a changed operation inside the trusted process. It is not cryptographic authorization against code that can import the library and mint its own binding; a remote service must add authenticated identity, durable audit, and server-held keys.
+
+## Evolution model
+
+Feedback is opt-in and excludes raw requests. Per-installation keyed fingerprints reduce cross-installation correlation. Aggregates produce review suggestions after a minimum sample threshold. Humans approve versioned registry or threshold changes, and Git/lifecycle snapshots provide rollback. Runtime self-modification is out of scope.

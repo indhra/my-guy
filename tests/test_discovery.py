@@ -1,4 +1,5 @@
-from router.discovery import discover_skills
+from router.config import SkillRoot
+from router.discovery import discover_named_roots, discover_skills
 
 
 def test_discovers_frontmatter_without_executing_skill(tmp_path):
@@ -25,3 +26,36 @@ def test_ignores_missing_or_malformed_skill_metadata(tmp_path):
     malformed.write_text("---\nname: bad\n---\n", encoding="utf-8")
 
     assert discover_skills([tmp_path]) == ()
+
+
+def test_multiline_description_and_root_namespace_are_preserved(tmp_path):
+    skill = tmp_path / "review" / "SKILL.md"
+    skill.parent.mkdir()
+    skill.write_text(
+        "---\nname: review\ndescription: |\n  Reviews security and privacy.\n  Preserves evidence.\n---\n",
+        encoding="utf-8",
+    )
+    result = discover_named_roots((SkillRoot("ecc", str(tmp_path), "local"),))[0]
+    assert result.id == "ecc:review"
+    assert result.trust == "local"
+    assert result.description == "Reviews security and privacy. Preserves evidence."
+
+
+def test_invalid_third_party_skill_name_is_isolated(tmp_path):
+    skill = tmp_path / "bad" / "SKILL.md"
+    skill.parent.mkdir()
+    skill.write_text("---\nname: bad name!\ndescription: malformed external metadata\n---\n")
+    assert discover_skills([tmp_path]) == ()
+
+
+def test_duplicate_names_get_stable_non_shadowing_ids(tmp_path):
+    for directory in ("one", "two"):
+        skill = tmp_path / directory / "SKILL.md"
+        skill.parent.mkdir()
+        skill.write_text(
+            f"---\nname: review\ndescription: Review code safely from {directory}.\n---\n"
+        )
+    results = discover_named_roots((SkillRoot("local", str(tmp_path)),))
+    assert len(results) == 2
+    assert len({item.id for item in results}) == 2
+    assert all(item.id.startswith("local:review:") for item in results)

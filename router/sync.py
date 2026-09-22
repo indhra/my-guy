@@ -14,7 +14,7 @@ def sync_capabilities(
     """Upsert capabilities and return previously known IDs absent this scan."""
     observed_at = observed_at or datetime.now(timezone.utc).isoformat()
     capabilities = tuple(capabilities)
-    catalog.upsert(capabilities)
+    catalog.reconcile_snapshot(capabilities)
     catalog.connection.execute(
         """CREATE TABLE IF NOT EXISTS capability_observations (
             id TEXT PRIMARY KEY,
@@ -29,15 +29,9 @@ def sync_capabilities(
         [(capability.id, capability.source, observed_at) for capability in capabilities],
     )
     catalog.connection.commit()
-    current_ids = {capability.id for capability in capabilities}
-    if current_ids:
-        placeholders = ",".join("?" for _ in current_ids)
-        known = catalog.connection.execute(
-            f"SELECT id FROM capability_observations WHERE id NOT IN ({placeholders})",
-            tuple(current_ids),
-        ).fetchall()
-    else:
-        known = catalog.connection.execute("SELECT id FROM capability_observations").fetchall()
+    known = catalog.connection.execute(
+        "SELECT id FROM capabilities WHERE active = 0 ORDER BY id"
+    ).fetchall()
     return tuple(sorted(row["id"] for row in known))
 
 

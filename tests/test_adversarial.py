@@ -54,3 +54,25 @@ def test_handoff_adapter_cannot_bypass_invocation_allowlist():
 
     with pytest.raises(PermissionError):
         execute(decision, capability, decision.request, ApprovalToken.for_execution(decision, capability, decision.request), Adapter())
+
+
+def test_approval_serialization_has_no_delimiter_collision():
+    capability = Capability("security", "ecc", "Security", (), ("security",), "skill:security", "local")
+    first = RouteDecision("recommend", "a", ("security",), "same", 0.9)
+    second = RouteDecision("recommend", "a|b", ("security",), "same", 0.9)
+    token = ApprovalToken.for_execution(first, capability, "b|c")
+    assert not token.matches(second, capability, "c")
+
+
+def test_clarification_decision_cannot_execute_even_with_binding():
+    capability = Capability("security", "ecc", "Security", (), ("security",), "skill:security", "local")
+    decision = RouteDecision("clarify", "security", ("security",), "clarify", 0.4)
+
+    class Adapter:
+        allowed_invocations = frozenset({"skill:security"})
+
+        def invoke(self, invocation, request):
+            raise AssertionError("must not invoke")
+
+    with pytest.raises(PermissionError):
+        execute(decision, capability, decision.request, ApprovalToken.for_execution(decision, capability, decision.request), Adapter())

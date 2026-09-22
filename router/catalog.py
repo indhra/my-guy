@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import sqlite3
 from collections.abc import Iterable
@@ -12,6 +13,8 @@ class CapabilityCatalog:
 
     def __init__(self, database: str | Path = ":memory:") -> None:
         self.connection = sqlite3.connect(str(database))
+        if database != ":memory:":
+            os.chmod(Path(database), 0o600)
         self.connection.row_factory = sqlite3.Row
         self.connection.execute(
             """CREATE TABLE IF NOT EXISTS capabilities (
@@ -21,9 +24,15 @@ class CapabilityCatalog:
                 domains TEXT NOT NULL,
                 triggers TEXT NOT NULL,
                 invocation TEXT NOT NULL,
-                trust TEXT NOT NULL
+                trust TEXT NOT NULL,
+                active INTEGER NOT NULL DEFAULT 1
             )"""
         )
+        columns = {row[1] for row in self.connection.execute("PRAGMA table_info(capabilities)")}
+        if "active" not in columns:
+            self.connection.execute(
+                "ALTER TABLE capabilities ADD COLUMN active INTEGER NOT NULL DEFAULT 1"
+            )
         self.connection.commit()
 
     def close(self) -> None:
@@ -56,18 +65,54 @@ class CapabilityCatalog:
         ]
         self.connection.executemany(
             """INSERT INTO capabilities
-               (id, source, description, domains, triggers, invocation, trust)
-               VALUES (?, ?, ?, ?, ?, ?, ?)
+               (id, source, description, domains, triggers, invocation, trust, active)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 1)
                ON CONFLICT(id) DO UPDATE SET
                  source=excluded.source,
                  description=excluded.description,
                  domains=excluded.domains,
                  triggers=excluded.triggers,
                  invocation=excluded.invocation,
-                 trust=excluded.trust""",
+                 trust=excluded.trust,
+                 active=1""",
             rows,
         )
         self.connection.commit()
+
+    def reconcile_snapshot(self, capabilities: Iterable[Capability]) -> None:
+        """Atomically activate the current scan and retain older rows as inactive evidence."""
+        capabilities = tuple(capabilities)
+        ids = [capability.id for capability in capabilities]
+        if len(ids) != len(set(ids)):
+            raise ValueError("snapshot contains duplicate capability ids")
+        rows = [
+            (
+                capability.id,
+                capability.source,
+                capability.description,
+                json.dumps(capability.domains),
+                json.dumps(capability.triggers),
+                capability.invocation,
+                capability.trust,
+            )
+            for capability in capabilities
+        ]
+        with self.connection:
+            self.connection.execute("UPDATE capabilities SET active = 0")
+            self.connection.executemany(
+                """INSERT INTO capabilities
+                   (id, source, description, domains, triggers, invocation, trust, active)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                   ON CONFLICT(id) DO UPDATE SET
+                     source=excluded.source,
+                     description=excluded.description,
+                     domains=excluded.domains,
+                     triggers=excluded.triggers,
+                     invocation=excluded.invocation,
+                     trust=excluded.trust,
+                     active=1""",
+                rows,
+            )
 
     def search(self, query: str, limit: int | None = None) -> tuple[Capability, ...]:
         """Return all matching entries unless the caller explicitly sets a limit."""
@@ -90,6 +135,14 @@ class CapabilityCatalog:
         if limit is not None:
             ranked = ranked[:limit]
         return tuple(self._capability(row) for _, row in ranked)
+
+    def all(self, *, include_stale: bool = True) -> tuple[Capability, ...]:
+        where = "" if include_stale else " WHERE active = 1"
+        rows = self.connection.execute(f"SELECT * FROM capabilities{where} ORDER BY id").fetchall()
+        return tuple(self._capability(row) for row in rows)
+
+    def active(self) -> tuple[Capability, ...]:
+        return self.all(include_stale=False)
 
     @staticmethod
     def _capability(row: sqlite3.Row) -> Capability:

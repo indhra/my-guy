@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --disable-pip-version-check build pytest
+      - run: python -m pytest -q
+      - run: PYTHONPYCACHEPREFIX=${{ runner.temp }}/pycache python -m compileall -q router tests
+      - run: python -m build
+      - run: python -m pip install --force-reinstall dist/*.whl
+      - run: python -m router doctor
