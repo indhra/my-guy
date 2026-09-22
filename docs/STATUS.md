@@ -33,6 +33,6 @@ Branch: `work/router-foundation`
 
 ## Next release gates
 
-1. Rebuild and install final release artifacts.
-2. Run the GStack design-review preamble and confirm the documented no-UI scope.
-3. Commit on the feature branch and open a pull request when a remote is available.
+1. Open a pull request when a remote and target branch are available.
+2. Keep provider execution disabled until identity, authenticated approval, rate limits, and provider-specific authorization tests exist.
+3. Run a full screenshot-based GStack design review only if a rendered UI is introduced.
