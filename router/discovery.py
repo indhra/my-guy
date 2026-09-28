@@ -1,9 +1,11 @@
 import re
+import stat
 from collections import Counter
 from hashlib import sha256
 from pathlib import Path
 
 from .config import SkillRoot
+from .path_safety import has_symlink_component, unsafe_skill_file, unsafe_skill_root
 from .models import Capability
 
 
@@ -37,19 +39,23 @@ def _frontmatter(text: str) -> dict[str, str]:
     return values
 
 
-def discover_skills(roots: list[str | Path]) -> tuple[Capability, ...]:
+def discover_skills(roots: list[str | Path], *, require_safe_files: bool = False) -> tuple[Capability, ...]:
     """Discover skill metadata without executing skill instructions."""
     capabilities: list[Capability] = []
     for root in roots:
         root_path = Path(root).expanduser()
-        if not root_path.exists():
+        if has_symlink_component(root_path) or not root_path.exists():
             continue
         for count, path in enumerate(sorted(root_path.rglob("SKILL.md"))):
             if count >= MAX_SKILLS_PER_ROOT:
                 break
-            if path.is_symlink():
+            if has_symlink_component(path):
                 continue
             try:
+                if not stat.S_ISREG(path.lstat().st_mode):
+                    continue
+                if require_safe_files and unsafe_skill_file(path):
+                    continue
                 if path.stat().st_size > MAX_SKILL_BYTES:
                     continue
                 metadata = _frontmatter(path.read_text(encoding="utf-8", errors="replace"))
@@ -75,11 +81,26 @@ def discover_skills(roots: list[str | Path]) -> tuple[Capability, ...]:
     return tuple(capabilities)
 
 
+def unsafe_skill_files(root: Path) -> tuple[tuple[str, str], ...]:
+    """Return rejected skill files for readiness diagnostics."""
+    if unsafe_skill_root(root) or not root.is_dir():
+        return ()
+    issues: list[tuple[str, str]] = []
+    for count, path in enumerate(sorted(root.rglob("SKILL.md"))):
+        if count >= MAX_SKILLS_PER_ROOT:
+            break
+        if reason := unsafe_skill_file(path):
+            issues.append((str(path), reason))
+    return tuple(issues)
+
+
 def discover_named_roots(roots: tuple[SkillRoot, ...]) -> tuple[Capability, ...]:
     """Discover namespaced capabilities so identical skill names cannot shadow each other."""
     capabilities: list[Capability] = []
     for root in roots:
-        raw = discover_skills([root.path])
+        if root.trust == "local" and unsafe_skill_root(Path(root.path)):
+            continue
+        raw = discover_skills([root.path], require_safe_files=root.trust == "local")
         mirrors: dict[tuple[str, str, str], Capability] = {}
         for capability in raw:
             key = (capability.id, capability.invocation, capability.description)

@@ -7,6 +7,8 @@ import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from .path_safety import has_symlink_component
+
 
 SCHEMA_VERSION = 1
 _ROOT_NAME = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
@@ -57,11 +59,12 @@ def app_home() -> Path:
 def default_roots(home: Path | None = None, project: Path | None = None) -> tuple[SkillRoot, ...]:
     home = home or Path.home()
     project = project or Path.cwd()
+    config_home = Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config")
     candidates = (
         SkillRoot("agents", str(home / ".agents" / "skills")),
         SkillRoot("codex", str(home / ".codex" / "skills")),
         SkillRoot("claude", str(home / ".claude" / "skills")),
-        SkillRoot("opencode", str(home / ".config" / "opencode" / "skills")),
+        SkillRoot("opencode", str(config_home / "opencode" / "skills")),
         SkillRoot("project-agents", str(project / ".agents" / "skills")),
         SkillRoot("project-codex", str(project / ".codex" / "skills")),
         SkillRoot("project-claude", str(project / ".claude" / "skills")),
