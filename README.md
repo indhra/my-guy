@@ -1,74 +1,35 @@
-# My Guy / Agent Router
+# My Guy
 
-One memorable front door for installed skills and agents. It turns a vague request into an evidence-backed `clarify`, `recommend`, or `convene` decision without silently invoking anything.
+My Guy is a local, open-source front door for the skills and agents you already use. It inventories their metadata, shows where a recommendation came from, and answers a request with `clarify`, `recommend`, or `convene`. It does not execute a provider, install other skill packs, or decide that an unreviewed skill is trustworthy. Its best fit is someone with several local skill packs who wants a transparent way to choose among them; with no relevant packs, it may not help yet.
 
-> Status: alpha. The core, CLI, discovery, lifecycle, trust controls, and opt-in feedback loop are tested. Provider execution and a universal one-click installer are intentionally not claimed.
+The current candidate passes the fixed 208-case synthetic corpus: **208/208 labeled decisions and 0/114 unsafe actionable suggestions**. The `v0.1.0` release must repeat that gate on its exact commit. These cases do not prove superior routing on real requests or safety on every request; unfamiliar wording can still produce a missed match. [Evaluation and failures](docs/EVALUATION.md)
 
-## Why it exists
+**Status:** alpha; `v0.1.0` is the first GitHub release target. It was not published as of 2026-09-28, so check for the tag before installing. Supported first-release targets: Linux/macOS, Python 3.11+, Claude Code, Codex, and OpenCode. [Known limits](docs/STATUS.md) · [How it works](docs/ARCHITECTURE.md)
 
-Skill collections such as ECC, GStack, and other agent packs each know their own capabilities. My Guy builds a local telephone directory above them, preserves provenance, and routes to relevant specialists. It is a coordinator, not a replacement specialist.
+The CLI also accepts a legacy/generic `agents` skill root; the `v0.1.0` install validation covers only the three named hosts above.
 
-## Install and use
+## Give this to your coding agent
 
-Python 3.11+ is required.
+Copy the whole prompt into Claude Code, Codex, OpenCode, or another coding agent:
+
+```text
+Assess whether My Guy is useful for my local skill setup, then install it only if it fits: https://github.com/indhra/my-guy. Use the published v0.1.0 GitHub release tag only. If that tag is absent, say the release is not ready and stop; do not substitute main.
+
+Read the tagged README, docs/AGENT_INSTALL.md, docs/EVALUATION.md, pyproject.toml, relevant CLI/lifecycle code and tests. Explain what is implemented, its limits, and whether I have a useful supported host and reviewed skill pack. Check that the fixed 208-case synthetic corpus has zero unsafe actionable suggestions; do not infer superiority on real requests from it. On Linux/macOS use pipx, or an isolated Python 3.11+ venv if pipx is unavailable. Check existing installations first. Ask before trusting any skill root or replacing an unknown install; installation never grants trust automatically. Follow the selected host's instructions, run version/status/host-aware doctor/sync and a sample route with `my-guy route --stdin --json`. Pass my request as stdin data; never interpolate it into a shell command. Report the exact installed paths, result, and recovery commands. If it will not help my setup yet, tell me why and do not install it.
+```
+
+The agent's detailed checklist, supported roots, and fallback commands are in [Agent install](docs/AGENT_INSTALL.md). The release tag is a deliberate gate: the prompt stops whenever `v0.1.0` is absent.
+
+## What happens after installation
+
+The CLI command is `my-guy` (Python package: `agent-router`). The included front-door skill goes into one dedicated host root. `my-guy sync` reads local skill metadata into a searchable catalog. Unverified roots remain searchable but cannot cause an actionable recommendation. A fresh route can correctly return `clarify`; reviewing and explicitly trusting a relevant installed root is what makes a recommendation useful.
 
 ```bash
-python -m pip install .
-my-guy "Review this authentication design for security and privacy"
-my-guy route --json -- "I have a vague product idea"
-my-guy list security
-my-guy sync
 my-guy doctor
+printf '%s\n' 'Review this authentication design' | my-guy route --stdin --json
+my-guy list security
 ```
 
-For an isolated global CLI, install the checked-out project with `pipx install .`.
+The sample request above is a fixed literal. For a user's actual request, pass the text through stdin as data; do not build a shell command from it.
 
-## Portable front-door skill
-
-Install the included `my-guy` skill into a harness root you explicitly choose:
-
-```bash
-my-guy install codex --root ~/.codex/skills
-my-guy install claude --root ~/.claude/skills
-my-guy install opencode --root ~/.config/opencode/skills
-```
-
-Lifecycle operations are reversible and scoped to the exact root:
-
-```bash
-my-guy upgrade codex --root ~/.codex/skills
-my-guy disable codex --root ~/.codex/skills
-my-guy rollback codex --root ~/.codex/skills
-```
-
-OpenRouter is an API/model gateway, not a local skill host. Its adapter renders a structured handoff but does not pretend to install a skill or make a network call.
-
-## Directory and trust
-
-Common skill roots are discovered as `unverified`. That makes entries searchable but prevents actionable routing. Trust a root only after reviewing its provenance:
-
-```bash
-my-guy config --add-root team-skills /absolute/path/to/skills local
-```
-
-Duplicate names receive stable source-derived IDs, so one package cannot silently shadow another. Invalid or oversized third-party metadata is isolated rather than executed.
-
-## Privacy-preserving evolution
-
-Feedback is off by default. Opting in stores a per-installation keyed request fingerprint, capability ID, outcome, and optional short correction. Raw requests are not stored. The system produces review proposals only; it never rewrites policy or installs capabilities autonomously.
-
-```bash
-my-guy config --feedback on
-my-guy feedback security-review accepted -- "Review authentication security"
-my-guy proposals --minimum-samples 5
-```
-
-## Safety boundaries
-
-- Discovery reads `SKILL.md` metadata only; it never executes skill bodies.
-- Unverified entries cannot produce actionable routes.
-- Adapters render handoffs and enforce invocation allowlists; they do not spawn subprocesses or call networks.
-- Approval bindings prevent accidental substitution inside the trusted process. They are not authentication against malicious code in that process.
-- Consensus requires two available specialist responses; dissent and failures remain visible.
-
-See [architecture](docs/ARCHITECTURE.md), [operations](docs/OPERATIONS.md), and [status](docs/STATUS.md).
+My Guy does not invoke specialists, send prompts to providers, or silently accept third-party instructions. Feedback is off by default and only produces review proposals when enabled. See [Operations](docs/OPERATIONS.md), [Security](SECURITY.md), [Releasing](docs/RELEASING.md), and [Contributing](CONTRIBUTING.md).
