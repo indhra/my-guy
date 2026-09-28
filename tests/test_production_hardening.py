@@ -70,3 +70,13 @@ def test_cli_rejects_insecure_existing_state_directory(tmp_path, monkeypatch, ca
     monkeypatch.setenv("MY_GUY_HOME", str(state))
     assert main(["sync"]) == 2
     assert "must not be group/world accessible" in capsys.readouterr().err
+
+
+def test_cli_rejects_symlinked_state_directory(tmp_path, monkeypatch, capsys):
+    real = tmp_path / "real-state"
+    real.mkdir(mode=0o700)
+    linked = tmp_path / "linked-state"
+    linked.symlink_to(real, target_is_directory=True)
+    monkeypatch.setenv("MY_GUY_HOME", str(linked))
+    assert main(["sync"]) == 2
+    assert "must not be a symlink" in capsys.readouterr().err
