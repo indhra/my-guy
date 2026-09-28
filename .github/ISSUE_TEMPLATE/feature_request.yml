@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest a user-facing improvement
+title: "feature: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What task is difficult today?
+      description: Describe the user workflow and host without private prompts.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain how the change would help and any approval or trust boundary involved.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Example or evidence
+      description: Optional reproducible example, baseline, or alternative considered.
