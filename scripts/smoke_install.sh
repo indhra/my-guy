@@ -9,6 +9,7 @@ fi
 artifact_dir=$(cd "$(dirname "$1")" && pwd -P)
 artifact="$artifact_dir/$(basename "$1")"
 smoke_dir=$(mktemp -d "${TMPDIR:-/tmp}/my-guy-smoke.XXXXXX")
+smoke_dir=$(cd "$smoke_dir" && pwd -P)
 trap 'rm -rf "$smoke_dir"' EXIT
 
 python3 -m venv "$smoke_dir/venv"
