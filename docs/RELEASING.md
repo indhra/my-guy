@@ -1,5 +1,14 @@
 # Releasing My Guy
 
+Before publishing the first tag, merge the tagged-install validation PR. After
+the annotated `v0.1.0` tag exists, manually dispatch **Tagged install validation**
+on `main` with `expected_sha` set to the exact 40-character `main` commit SHA.
+The workflow fails unless the dispatch commit and the annotated tag both match
+that SHA. It installs `git+https://github.com/indhra/my-guy.git@v0.1.0` from
+the URL via pipx and venv on Ubuntu and macOS (Python 3.11), verifies package
+provenance and runs disposable Claude/Codex/OpenCode CLI lifecycles. It does not
+prove native host application recognition or independent agent usefulness.
+
 The first release channel is GitHub Releases. The Python distribution is named `agent-router`; the command is `my-guy`. Release publication, repository settings, and tags require separate human approval. No workflow publishes automatically.
 
 Before tagging, the maintainer should confirm that `main` requires a reviewed PR and passing CI, release tags cannot be moved casually, private vulnerability reporting works, and Dependabot alerts, CodeQL, secret scanning, and push protection have been reviewed in GitHub settings. Repository-setting changes are separate approved actions; this document does not make them happen.
