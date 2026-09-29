@@ -7,7 +7,7 @@ description: Clarifies vague requests, discovers relevant installed capabilities
 
 Use the installed `my-guy` CLI as the routing authority for this request.
 
-1. Pass the user's request verbatim to `my-guy route --json -- <request>`.
+1. Send the user's request verbatim on standard input to `my-guy route --stdin --json`. Use an argument-array or stdin-capable tool. Never interpolate request text into a shell command.
 2. If the result is `clarify`, ask only the smallest question needed to route safely.
 3. If it is `recommend` or `convene`, show candidates, provenance, confidence, and dissent.
 4. Never claim a specialist ran unless the host actually invoked it and returned evidence.

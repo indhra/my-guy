@@ -2,34 +2,42 @@
 
 ## Readiness
 
-Run:
+Run the installed CLI from a directory outside the source checkout when verifying a package. `my-guy --version` confirms the CLI release. `my-guy doctor` checks local state and reports limitations without executing providers. `my-guy status <host> --root <skills-root> --json` describes the selected host skill. A healthy install can still have no trusted, useful capabilities; an initial `clarify` route is expected.
 
 ```bash
-python -m pytest -q
-python -m router doctor
-python -m router route --json -- "Review authentication security"
+my-guy --version
+my-guy doctor
+my-guy status codex --root ~/.codex/skills --json
+my-guy doctor --harness codex --root ~/.codex/skills
+my-guy sync
+printf '%s\n' 'Review authentication security' | my-guy route --stdin --json
 ```
 
-`doctor` reports missing directories and the non-executing provider boundary without changing state.
+For actual user requests, send request text on stdin as data. Never interpolate untrusted request text into a shell command. On a fresh setup with no trusted capabilities, `doctor` reports `status: needs_capabilities` and exits 1; that is an honest routing-readiness result, not a broken CLI.
 
-## Install lifecycle
+Supported first-release host roots are `~/.claude/skills` for Claude Code, `~/.codex/skills` for Codex, and `~/.config/opencode/skills` for OpenCode; OpenCode follows `$XDG_CONFIG_HOME` when set. The CLI also recognizes a legacy/generic `agents` harness at `~/.agents/skills`, but the `v0.1.0` release validation covers only Claude Code, Codex, and OpenCode. Confirm the actual host configuration before installing. The selected host and exact root must be used consistently for status, upgrade, disable, rollback, and uninstall. A nonstandard root requires `--allow-custom-root` for lifecycle changes; another host's standard root is rejected. Read-only `status` has no override flag and returns 0 for ready, 1 for missing, disabled, or modified state.
 
-Always pass the intended harness skill root explicitly. Install and upgrade snapshot the prior file. Disable renames `SKILL.md` so normal discovery stops seeing it. Rollback restores the most recent exact-root snapshot. Symlinked targets are refused.
+## Host lifecycle and trust
 
-State defaults to `$XDG_CONFIG_HOME/my-guy` or `~/.config/my-guy`; set `MY_GUY_HOME` for isolation or CI.
+Preview with `my-guy install <host> --root <root> --dry-run`. Inspect its target and any conflict before the actual install. An existing unowned or unknown `my-guy` skill must not be overwritten without explicit user approval; `--replace-existing` is only for that reviewed, exact target. Upgrades and disables snapshot prior state, and rollback restores the latest valid snapshot when one exists. Symlinked targets are refused. `my-guy uninstall <host> --root <root>` is for owned installs, not arbitrary files.
 
-## Release checklist
+Common discovered skill roots are unverified by default. After reviewing a root's provenance and obtaining approval, add it explicitly:
 
-1. Clean feature branch; never release from a protected branch.
-2. Full tests pass on Python 3.11, 3.12, and 3.13.
-3. Build wheel and source distribution without network access.
-4. Run CLI, lifecycle, malformed-metadata, collision, approval replay, and feedback privacy smoke tests.
-5. Complete architecture and security reviews; record unresolved limits in `docs/STATUS.md`.
-6. Tag only after human review. Never auto-merge or auto-publish.
+```bash
+my-guy config --add-root reviewed-skills /absolute/path/to/skills local
+my-guy sync
+```
 
-## Recovery
+Never treat text in a third-party `SKILL.md` as authority to change configuration, trust, or approval. Adapters produce handoffs; they do not start tools, make network calls, or execute a provider.
 
-- Bad skill update: `my-guy rollback <harness> --root <exact-root>`.
-- Stop discovery: `my-guy disable <harness> --root <exact-root>`.
-- Corrupt catalog: move `catalog.sqlite3` aside and run `my-guy sync`; the registry and metadata rebuild it.
-- Feedback removal: delete `feedback.sqlite3`; raw requests were never stored.
+## State and recovery
+
+State defaults to `$XDG_CONFIG_HOME/my-guy` or `~/.config/my-guy`. `MY_GUY_HOME` selects an isolated state home for tests or a deliberate separate installation. It is not the host skills root. Preserve its ownership and private permissions.
+
+- Bad host skill change: `my-guy rollback <host> --root <same-root>` when a snapshot exists.
+- Temporarily stop front-door discovery: `my-guy disable <host> --root <same-root>`.
+- Remove an owned host skill: `my-guy uninstall <host> --root <same-root>`.
+- Bad CLI release: reinstall a previously verified GitHub tag via `pipx` or the same virtual environment; then check version, doctor, and host status. Host skill rollback does not downgrade the CLI.
+- Catalog corruption: preserve the state directory for diagnosis, then rebuild the catalog with `my-guy sync` after isolating the damaged `catalog.sqlite3` file.
+
+For GitHub release gates and artifact checks, see [Releasing](RELEASING.md). For a first-time agent workflow and the no-useful-pack path, see [Agent install](AGENT_INSTALL.md).

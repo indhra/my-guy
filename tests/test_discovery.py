@@ -1,5 +1,49 @@
+import os
+
+import pytest
+
 from router.config import SkillRoot
 from router.discovery import discover_named_roots, discover_skills
+
+
+@pytest.fixture(autouse=True)
+def private_skill_fixture_umask():
+    previous = os.umask(0o022)
+    try:
+        yield
+    finally:
+        os.umask(previous)
+
+
+def test_private_trusted_root_under_shared_parent_is_not_discovered(tmp_path):
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    shared.chmod(0o777)
+    root = shared / "private"
+    skill = root / "security" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: security\ndescription: Review authentication security.\n---\n")
+
+    assert discover_named_roots((SkillRoot("reviewed", str(root), "local"),)) == ()
+
+
+def test_mutable_or_nonregular_skill_file_cannot_gain_local_trust(tmp_path):
+    skill = tmp_path / "security" / "SKILL.md"
+    skill.parent.mkdir()
+    skill.write_text("---\nname: security\ndescription: Review authentication security.\n---\n")
+    roots = (SkillRoot("reviewed", str(tmp_path), "local"),)
+    for mode in (0o664, 0o666):
+        skill.chmod(mode)
+        assert discover_named_roots(roots) == ()
+
+    skill.unlink()
+    os.mkfifo(skill)
+    assert discover_named_roots(roots) == ()
+    skill.unlink()
+    real = tmp_path / "real.md"
+    real.write_text("---\nname: security\ndescription: Review authentication security.\n---\n")
+    skill.symlink_to(real)
+    assert discover_named_roots(roots) == ()
 
 
 def test_discovers_frontmatter_without_executing_skill(tmp_path):
@@ -59,3 +103,22 @@ def test_duplicate_names_get_stable_non_shadowing_ids(tmp_path):
     assert len(results) == 2
     assert len({item.id for item in results}) == 2
     assert all(item.id.startswith("local:review:") for item in results)
+
+
+def test_trusted_symlink_root_does_not_become_routable(tmp_path):
+    real = tmp_path / "real"
+    skill = real / "review" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: review\ndescription: Review security.\n---\n")
+    linked = tmp_path / "linked"
+    linked.symlink_to(real, target_is_directory=True)
+    assert discover_named_roots((SkillRoot("linked", str(linked), "local"),)) == ()
+
+
+def test_shared_writable_trusted_root_does_not_become_routable(tmp_path):
+    root = tmp_path / "shared"
+    skill = root / "review" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: review\ndescription: Review security.\n---\n")
+    root.chmod(0o777)
+    assert discover_named_roots((SkillRoot("shared", str(root), "local"),)) == ()

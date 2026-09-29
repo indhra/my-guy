@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible problem with My Guy
+title: "bug: "
+body:
+  - type: markdown
+    attributes:
+      value: "Please remove secrets, private prompts, and personal data. Report vulnerabilities through the private advisory form in SECURITY.md."
+  - type: input
+    id: version
+    attributes:
+      label: My Guy version or commit
+      placeholder: "v0.1.0 or commit SHA"
+    validations:
+      required: true
+  - type: dropdown
+    id: host
+    attributes:
+      label: Host
+      options: [Claude Code, Codex, OpenCode, CLI only]
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and Python version
+      placeholder: "Ubuntu 24.04, Python 3.12"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include only safe, minimal commands and sanitized output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true

@@ -2,6 +2,7 @@ import re
 from collections.abc import Iterable
 
 from .models import Capability, RouteDecision
+from .query import exclusion_tokens, explicit_abstention, matched_aliases, routing_spans, uncertain_exclusion
 
 MIN_RECOMMEND_CONFIDENCE = 0.7
 TRUSTED_FOR_ROUTING = frozenset({"verified", "local"})
@@ -11,6 +12,11 @@ def _tokens(text: str) -> set[str]:
     return set(re.findall(r"[a-z0-9]+", text.lower()))
 
 
+def _evidence(matched: set[str], aliases: tuple[tuple[str, str], ...]) -> str:
+    parts = [*sorted(matched), *(f"alias '{phrase}' -> {trigger}" for phrase, trigger in aliases)]
+    return ", ".join(parts)
+
+
 def route(request: str, capabilities: Iterable[Capability]) -> RouteDecision:
     """Return a recommendation without invoking tools or changing files.
 
@@ -18,12 +24,41 @@ def route(request: str, capabilities: Iterable[Capability]) -> RouteDecision:
     adapter may add semantic classification, but it must preserve this
     approval boundary and expose its evidence.
     """
-    text = _tokens(request)
-    scored: list[tuple[int, Capability, set[str]]] = []
+    if explicit_abstention(request):
+        return RouteDecision(
+            status="clarify",
+            request=request,
+            candidates=(),
+            reason="Request asks for no route or for a choice before routing.",
+            confidence=0.0,
+        )
+
+    if uncertain_exclusion(request):
+        return RouteDecision(
+            status="clarify",
+            request=request,
+            candidates=(),
+            reason="Exclusion scope is uncertain; clarify the requested and excluded work before routing.",
+            confidence=0.0,
+        )
+    clean_request, excluded_text = routing_spans(request)
+    text = _tokens(clean_request)
+    aliases = matched_aliases(clean_request)
+    excluded = exclusion_tokens(excluded_text)
+    excluded_alias_triggers = {trigger for _, trigger in matched_aliases(excluded_text)}
+    scored: list[tuple[int, Capability, set[str], tuple[tuple[str, str], ...]]] = []
+    excluded_matches = False
     for capability in capabilities:
         matched = text.intersection(capability.triggers)
-        if matched:
-            scored.append((len(matched), capability, matched))
+        applicable_aliases = tuple(alias for alias in aliases if alias[1] in capability.triggers)
+        if matched or applicable_aliases:
+            domain_tokens = set().union(*(_tokens(domain) for domain in capability.domains))
+            if (excluded.intersection(set(capability.triggers) | domain_tokens)
+                    or excluded_alias_triggers.intersection(capability.triggers)):
+                excluded_matches = True
+                continue
+            score = len(matched) + 2 * len(applicable_aliases)
+            scored.append((score, capability, matched, applicable_aliases))
 
     scored.sort(key=lambda item: (-item[0], item[1].id))
     if not scored:
@@ -31,7 +66,8 @@ def route(request: str, capabilities: Iterable[Capability]) -> RouteDecision:
             status="clarify",
             request=request,
             candidates=(),
-            reason="No registered capability matched the request.",
+            reason=("Explicit exclusions overlap every matching capability; clarify before routing."
+                    if excluded_matches else "No registered capability matched the request."),
             confidence=0.0,
         )
     trusted = [item for item in scored if item[1].trust in TRUSTED_FOR_ROUTING]
@@ -43,10 +79,24 @@ def route(request: str, capabilities: Iterable[Capability]) -> RouteDecision:
             reason="Only unverified capabilities matched; verify provenance before routing.",
             confidence=0.0,
         )
+    best_trusted_score = trusted[0][0]
+    blocked = [
+        item for item in scored
+        if item[1].trust not in TRUSTED_FOR_ROUTING and item[0] >= best_trusted_score
+    ]
+    if blocked:
+        leading_trusted = [item for item in trusted if item[0] == best_trusted_score]
+        return RouteDecision(
+            status="clarify",
+            request=request,
+            candidates=tuple(item[1].id for item in (*leading_trusted, *blocked)),
+            reason="Unverified capability matched the leading trusted route; verify provenance or clarify the request.",
+            confidence=0.0,
+        )
     scored = trusted
     selected = [item for item in scored if item[0] == scored[0][0]]
     if len(selected) == 1:
-        score, capability, matched = selected[0]
+        score, capability, matched, matched_phrases = selected[0]
         confidence = min(0.95, 0.45 + (0.15 * score))
         if confidence < MIN_RECOMMEND_CONFIDENCE:
             return RouteDecision(
@@ -61,7 +111,7 @@ def route(request: str, capabilities: Iterable[Capability]) -> RouteDecision:
             request=request,
             candidates=(capability.id,),
             reason=(
-                f"Matched {', '.join(sorted(matched))}; source={capability.source}; "
+                f"Matched {_evidence(matched, matched_phrases)}; source={capability.source}; "
                 f"invoke {capability.invocation}."
             ),
             confidence=confidence,
@@ -69,7 +119,7 @@ def route(request: str, capabilities: Iterable[Capability]) -> RouteDecision:
 
     candidate_ids = tuple(item[1].id for item in selected)
     evidence = "; ".join(
-        f"{item[1].id} (source={item[1].source}): {', '.join(sorted(item[2]))}" for item in selected
+        f"{item[1].id} (source={item[1].source}): {_evidence(item[2], item[3])}" for item in selected
     )
     return RouteDecision(
         status="convene",
