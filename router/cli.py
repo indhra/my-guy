@@ -277,9 +277,15 @@ def _main(argv: list[str] | None = None) -> int:
             name, path, trust = args.add_root
             if trust == "local" and (reason := unsafe_skill_root(Path(path))):
                 raise PermissionError(f"trusted skill root is unsafe: {reason}")
-            hosts = tuple(host.strip() for host in args.hosts.split(",")) if args.hosts else ()
-            if any(not host for host in hosts) or len(hosts) != len(set(hosts)) or any(
-                host not in {"codex", "claude", "opencode"} for host in hosts
+            hosts = None
+            if args.hosts is not None:
+                hosts = tuple(host.strip() for host in args.hosts.split(",")) if args.hosts else ()
+            if hosts is not None and (
+                any(not host for host in hosts)
+                or len(hosts) != len(set(hosts))
+                or any(
+                    host not in {"codex", "claude", "opencode"} for host in hosts
+                )
             ):
                 raise ValueError("--hosts must list unique codex, claude, or opencode hosts")
             root = SkillRoot(name, path, trust, hosts=hosts)
@@ -469,15 +475,19 @@ def _main(argv: list[str] | None = None) -> int:
             print("a non-empty request is required", file=sys.stderr)
             return 2
         decision = route(request, capabilities, host=args.host)
-        payload = _decision_payload(decision, capabilities, args.host, include_all=args.all or not args.json)
+        payload = _decision_payload(decision, capabilities, args.host, include_all=args.all)
         if args.json:
             print(json.dumps(payload, indent=2))
         else:
             print(f"{decision.status.upper()} ({decision.confidence:.2f})")
             evidence = payload["evidence"]
             limit = 10
-            if len(evidence) > limit:
-                print(f"{len(evidence)} candidates matched; showing the first {limit}. Use --json for the full result.")
+            candidate_total = payload["candidate_total"]
+            if candidate_total > limit:
+                print(
+                    f"{candidate_total} candidates matched; showing the first {limit}. "
+                    "Use --json --all for the full result."
+                )
             else:
                 print(decision.reason)
             for item in evidence[:limit]:
@@ -498,10 +508,12 @@ def _main(argv: list[str] | None = None) -> int:
                     f"Cross-host match: {match['id']} [{match['trust']}; {match['availability']}] "
                     f"on {host_label}"
                 )
-            if len(cross_host_matches) > 3:
-                print(f"{len(cross_host_matches) - 3} more cross-host matches; use --json for the full list.")
-            for evidence in payload["evidence"]:
-                print(f"- {evidence['id']} [{evidence['trust']}] via {evidence['invocation']} ({evidence['source']})")
+            cross_host_total = payload.get("cross_host_match_total", len(cross_host_matches))
+            if cross_host_total > 3:
+                print(
+                    f"{cross_host_total - 3} more cross-host matches; "
+                    "use --json --all for the full list."
+                )
         return 0
     finally:
         catalog.close()

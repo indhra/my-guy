@@ -217,7 +217,7 @@ def _skill_hosts(
     root: SkillRoot, *, home: Path, project: Path
 ) -> tuple[str, ...] | None:
     """Use explicit host metadata or an exact, recognized root layout."""
-    if root.hosts:
+    if root.hosts is not None:
         return root.hosts
     canonical_roots = {
         (home / ".codex" / "skills").resolve(): ("codex",),
@@ -309,6 +309,7 @@ def _plugin_roots(
                 explicitly_trusted = any(
                     root.kind == "skill"
                     and root.trust == "local"
+                    and root.hosts is not None
                     and "claude" in root.hosts
                     and resolved_path.is_relative_to(Path(root.path).resolve())
                     for root in config.roots

@@ -295,14 +295,13 @@ def test_route_prepares_approval_gated_cross_host_handoff(monkeypatch, tmp_path,
 def test_unknown_host_scope_is_visible_but_never_prepares_handoff(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
-    skills = tmp_path / "custom-skill-root"
-    monkeypatch.setattr("router.cli._seed_capabilities", lambda: ())
-    skill = skills / "threat-review" / "SKILL.md"
-    skill.parent.mkdir(parents=True)
-    skill.write_text("---\nname: threat-review\ndescription: Review security threats.\n---\n")
+    unknown = Capability(
+        "unknown-scope", "legacy", "Review security threats", (),
+        ("review", "security", "threats"), "skill:unknown-scope", "local", hosts=None,
+    )
+    monkeypatch.setattr("router.cli._seed_capabilities", lambda: (unknown,))
+    monkeypatch.setattr("router.cli.discover_inventory", lambda config: ())
 
-    assert main(["config", "--add-root", "custom", str(skills), "local"]) == 0
-    capsys.readouterr()
     assert main(["route", "--host", "codex", "--json", "Review", "security", "threats"]) == 0
     payload = json.loads(capsys.readouterr().out)
 
@@ -395,6 +394,25 @@ def test_config_persists_explicit_hosts_for_skill_and_agent_roots(monkeypatch, t
     assert roots["agents"]["hosts"] == ["opencode"]
 
 
+def test_config_distinguishes_unknown_hosts_from_explicit_empty_hosts(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    unknown_path = tmp_path / "unknown-skills"
+    empty_path = tmp_path / "empty-skills"
+    unknown_path.mkdir()
+    empty_path.mkdir()
+
+    assert main(["config", "--add-root", "unknown", str(unknown_path), "local"]) == 0
+    unknown_roots = json.loads(capsys.readouterr().out)["roots"]
+    assert next(root for root in unknown_roots if root["name"] == "unknown")["hosts"] is None
+
+    assert main([
+        "config", "--add-root", "unavailable", str(empty_path), "local", "--hosts", ""
+    ]) == 0
+    all_roots = json.loads(capsys.readouterr().out)["roots"]
+    assert next(root for root in all_roots if root["name"] == "unavailable")["hosts"] == []
+
+
 def test_route_json_bounds_candidates_and_all_opts_in(monkeypatch, tmp_path, capsys):
     from router.models import Capability
 
@@ -421,6 +439,31 @@ def test_route_json_bounds_candidates_and_all_opts_in(monkeypatch, tmp_path, cap
     full = json.loads(capsys.readouterr().out)
     assert full["candidates_truncated"] is False
     assert len(full["candidates"]) == 30
+    assert len(full["evidence"]) == 30
+
+
+def test_route_text_caps_candidate_output_at_ten_without_duplicates(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    capabilities = tuple(
+        Capability(
+            f"cap-{index:03}", "fixture", "Review security", (),
+            ("review", "security"), f"skill:cap-{index:03}", "local",
+        )
+        for index in range(30)
+    )
+    monkeypatch.setattr("router.cli._seed_capabilities", lambda: ())
+    monkeypatch.setattr("router.cli.discover_inventory", lambda config: capabilities)
+
+    assert main(["route", "Review", "security"]) == 0
+    output = capsys.readouterr().out
+    displayed = [line for line in output.splitlines() if line.startswith("- ")]
+    displayed_ids = [line.split()[1] for line in displayed]
+
+    assert "30 candidates matched; showing the first 10." in output
+    assert "Use --json --all for the full result." in output
+    assert len(displayed) == 10
+    assert len(set(displayed_ids)) == 10
 
 
 def test_route_all_requires_json(capsys):

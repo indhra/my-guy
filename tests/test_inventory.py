@@ -188,6 +188,29 @@ def test_claude_plugin_install_path_requires_managed_or_explicit_trusted_root(tm
     ]
 
 
+def test_enabled_claude_plugin_ignores_shared_root_with_unknown_hosts(tmp_path):
+    home = tmp_path / "home"
+    project = tmp_path / "project"
+    shared_root = tmp_path / "shared"
+    plugin = tmp_path / "custom-storage" / "review"
+    shared_root.mkdir()
+    _write(
+        plugin / "skills" / "review" / "SKILL.md",
+        "---\nname: review\ndescription: Review work.\n---\n",
+    )
+    _write(
+        home / ".claude" / "plugins" / "installed_plugins.json",
+        '{"plugins":{"review@market":[{"scope":"user",'
+        f'"installPath":"{plugin}"' + "}]}}",
+    )
+    _write(home / ".claude" / "settings.json", '{"enabledPlugins":{"review@market":true}}')
+    config = RouterConfig(
+        roots=(SkillRoot("shared", str(shared_root), "local", hosts=None),),
+    )
+
+    assert discover_inventory(config, home=home, project=project) == ()
+
+
 def test_skill_hosts_infer_only_exact_canonical_layouts(tmp_path):
     home = tmp_path / "home"
     project = tmp_path / "project"
@@ -205,6 +228,19 @@ def test_skill_hosts_infer_only_exact_canonical_layouts(tmp_path):
 
     assert inferred[0].hosts == ("codex",)
     assert unknown[0].hosts is None
+
+
+def test_explicit_empty_hosts_disable_canonical_root_inference(tmp_path):
+    home = tmp_path / "home"
+    project = tmp_path / "project"
+    canonical = home / ".codex" / "skills"
+    _write(canonical / "review" / "SKILL.md", "---\nname: review\ndescription: Review.\n---\n")
+    config = RouterConfig(roots=(SkillRoot("unavailable", str(canonical), hosts=()),))
+
+    items = discover_inventory(config, home=home, project=project)
+
+    assert len(items) == 1
+    assert items[0].hosts == ()
 
 
 def test_opencode_jsonc_agent_is_static_and_project_config_wins(tmp_path):
