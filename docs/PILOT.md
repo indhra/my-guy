@@ -13,10 +13,13 @@ or make third-party skills trustworthy.
 
 ## Enrollment and consent
 
-Recruit 10–20 **distinct** solo developers who already use several local skill
-packs. Start with a three-person dry run to check that the instructions,
-scoring, and privacy process work; count those results separately and revise
-the protocol before the main pilot if needed. Participation is voluntary.
+Start with **three colleagues** for an observational dry run: native routing
+before installation, then approved My Guy setup and a fresh My Guy route.
+These fixed-order observations are not randomized, scored matched pairs, or
+superiority evidence. Screen the remaining 20 colleagues for a target of
+10–20 **distinct** main-pilot opt-ins who already use several reviewed local
+skills. Revise unclear instructions before the main pilot. Participation is
+voluntary.
 Explain the two arms, local installation and rollback, information collected,
 incident stop rules, and publication plan. Obtain explicit consent before setup
 or task recording; allow withdrawal before aggregated results are published.
@@ -29,11 +32,19 @@ record a short, sanitized task category and acceptable route or routes,
 including when clarification or no-capability is appropriate. Keep the actual
 request and any private context on the participant's machine.
 
-## Paired run
+Matched pairs are optional for later qualified volunteers only. They require
+two disposable host homes or profiles, a clean project, matched other skill
+inventory, and verification that My Guy's front door and CLI are unavailable
+in the native arm. Otherwise collect observations only and mark the pair
+unscorable. Wait for the coordinator-approved release pin and setup guide
+before installing; then use the [agent install guide](AGENT_INSTALL.md) as the
+canonical setup reference.
+
+## Matched paired run
 
 1. Pin the same host application, model/version, non-My-Guy skill set and
-   trusted-root decisions for both arms. Use the published `v0.1.0` tag and
-   follow the [install guide's](AGENT_INSTALL.md) release check.
+   trusted-root decisions for both arms. Use only the coordinator-approved
+   release pin and follow the [install guide's](AGENT_INSTALL.md) release check.
    Inspect existing installations and get approval before any replacement or
    trust change, as in the [install guide](AGENT_INSTALL.md).
 2. For each task, use the identical request and relevant context in two fresh
@@ -50,7 +61,7 @@ request and any private context on the participant's machine.
    whether to follow a recommendation and must approve any consequential
    action. No arm gets automatic skill trust.
 4. Score the initial route against the acceptable route recorded before the
-   outcomes. Then complete the task normally if appropriate. Record setup
+   outcomes. Stop this routing exercise before task execution. Record setup
    effort separately from task effort so installation time is visible and does
    not distort a single task's result.
 
@@ -58,10 +69,9 @@ Pair the route decision in both fresh sessions before any consequential action.
 Measure route-phase time, steps, tool calls, and available tokens from request
 submission to the first skill choice, clarification request, or no-capability
 decision in each arm; mark an implicit native choice as such. Full task
-completion and end-to-end effort can be paired only when both arms use
-independent equivalent disposable copies. Otherwise complete the task once if
-appropriate, mark the other arm's end-to-end result `N/A (unpaired)`, and
-exclude it from paired end-to-end comparisons. Record deviations; do not
+outcomes are `N/A` for this exercise. A separate full-task study could compare
+outcomes only with independent equivalent disposable copies; otherwise mark
+them `N/A (unpaired)`. Record deviations; do not
 present changed tasks as clean comparisons.
 
 ## Scorecard
@@ -74,7 +84,7 @@ Record one row per task and arm, with a participant code and task code only:
 | Route quality and incidents | Correct selection; appropriate clarification; appropriate no-capability response; strict routing-evaluation unsafe actionable, pilot safety-stop suggestion, unauthorized action, and privacy breach as separate yes/no fields with sanitized reasons |
 | Evidence | Whether the route gave usable source/evidence for its choice, and whether the participant could inspect it |
 | Effort | Paired route-phase time, steps, tool calls, and available tokens; setup effort separately; end-to-end effort only for independently repeatable paired copies, otherwise `N/A (unpaired)` |
-| Outcome | Task completion (secondary; paired only with independent copies), participant-observed friction, and protocol deviations |
+| Outcome | `N/A` task completion for this routing exercise; participant-observed friction and protocol deviations. A separate full-task study needs independent equivalent copies. |
 
 Count each route result, including misses, abstentions, and tasks that lack an
 available capability. Record setup time and steps once per participant and
@@ -139,7 +149,7 @@ unauthorized actions, and privacy breaches separately, alongside route-phase
 distributions and paired differences, and how many end-to-end results were
 unpaired. Suppress public subgroup cells of fewer than five people; roll them
 into broader totals. Publish only explicitly consented, sanitized quotes.
-Task completion remains secondary. State the small sample, self-selected
+Any later task-completion study is separate and secondary. State the small sample, self-selected
 participants, task mix, possible order effects, and lack of blinded scoring.
 Do not advertise a `10x` gain or any general superiority claim from these data.
 
