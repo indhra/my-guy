@@ -37,7 +37,7 @@ State defaults to `$XDG_CONFIG_HOME/my-guy` or `~/.config/my-guy`. `MY_GUY_HOME`
 - Bad host skill change: `my-guy rollback <host> --root <same-root>` when a snapshot exists.
 - Temporarily stop front-door discovery: `my-guy disable <host> --root <same-root>`.
 - Remove an owned host skill: `my-guy uninstall <host> --root <same-root>`.
-- Bad CLI release: reinstall a previously verified GitHub tag via `pipx` or the same virtual environment; then check version, doctor, and host status. Host skill rollback does not downgrade the CLI.
+- Bad CLI release: reinstall only a previously reviewed exact commit SHA via `pipx` or the same virtual environment. For v0.1.0, use `c6edf09de6a9fcd6df80ae7116f0735a5ecb0d7f`; for a future release, verify its exact commit first. Follow the tag check and install instructions in [Agent install](AGENT_INSTALL.md), then check version, doctor, and host status. Host skill rollback does not downgrade the CLI.
 - Catalog corruption: preserve the state directory for diagnosis, then rebuild the catalog with `my-guy sync` after isolating the damaged `catalog.sqlite3` file.
 
 For GitHub release gates and artifact checks, see [Releasing](RELEASING.md). For a first-time agent workflow and the no-useful-pack path, see [Agent install](AGENT_INSTALL.md).
