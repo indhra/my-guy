@@ -22,7 +22,7 @@ An earlier local alpha review recorded 58 passing tests and closed its critical/
 
 - The annotated `v0.1.0` tag resolves to `c6edf09de6a9fcd6df80ae7116f0735a5ecb0d7f`. The alpha prerelease provides `agent_router-0.1.0-py3-none-any.whl`, `agent_router-0.1.0.tar.gz`, and `SHA256SUMS`.
 - [CI](https://github.com/indhra/my-guy/actions/runs/36555263444) passed on the release commit. The [tagged install validation](https://github.com/indhra/my-guy/actions/runs/36566743690) passed tagged URL install and disposable CLI lifecycle checks on Ubuntu and macOS with Python 3.11.
-- These CLI checks do not establish native Claude Code, Codex, or OpenCode application recognition, independent agent usefulness, or superior routing on real requests. URL-only agent trials and a consent-based pilot remain future evidence. [Evaluation](EVALUATION.md) records earlier failures and fixes; passing its synthetic gate cannot rule out missed matches.
+- These CLI checks do not establish native Claude Code, Codex, or OpenCode application recognition, independent agent usefulness, or superior routing on real requests. URL-only agent trials and a consent-based [pilot](PILOT.md) remain future evidence. [Evaluation](EVALUATION.md) records earlier failures and fixes; passing its synthetic gate cannot rule out missed matches.
 
 ## Honest limits
 
