@@ -76,3 +76,7 @@ Collect opt-in route outcomes, user corrections, specialist usefulness,
 disagreement, and failure reasons. Recalibrate thresholds and registry
 metadata through reviewed, versioned, reversible changes. The router must not
 rewrite its own policy or install capabilities autonomously.
+
+## Host-aware inventory expansion
+
+The agent and plugin inventory expansion is a separate post-`v0.1.0` increment and a deliberate compatibility break for OpenRouter. Its acceptance gates are: recognize only documented host layouts; require explicit host scope for custom roots before they can produce targeted handoffs; constrain Claude plugin paths to managed storage; preserve host kind and availability in SQLite; migrate legacy host scope as unknown; and include approval-gated prepared cross-host handoffs. OpenRouter handoffs stay disabled until an explicit mapping to Codex, Claude Code, or OpenCode is defined; no provider is treated as an agent host by name alone. Static discovery must remain bounded, read-only, and harness-neutral at the routing contract. Full local verification and review are required before release claims are updated.

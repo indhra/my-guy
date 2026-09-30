@@ -5,7 +5,10 @@ from router.models import Capability, RouteDecision
 
 def test_claude_adapter_renders_approved_handoff():
     decision = RouteDecision("recommend", "Research this.", ("research",), "source=matt", 0.9)
-    capability = Capability("research", "matt", "Research", (), ("research",), "/research", "local")
+    capability = Capability(
+        "research", "matt", "Research", (), ("research",), "/research", "local",
+        hosts=("claude",),
+    )
     handoff = execute(
         decision,
         capability,

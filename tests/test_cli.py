@@ -5,6 +5,7 @@ import os
 import pytest
 
 from router.cli import main
+from router.models import Capability
 
 
 REQUEST_LIMIT = 1_048_576
@@ -268,6 +269,206 @@ def test_status_and_doctor_report_mutable_installed_skill(monkeypatch, tmp_path,
     doctor = json.loads(capsys.readouterr().out)
     assert doctor["installation"]["state"] == "unsafe"
     assert doctor["status"] != "ready"
+
+
+def test_route_prepares_approval_gated_cross_host_handoff(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    skills = tmp_path / ".claude" / "skills"
+    monkeypatch.setattr("router.cli._seed_capabilities", lambda: ())
+    skill = skills / "threat-review" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: threat-review\ndescription: Review security threats.\n---\n")
+
+    assert main(["config", "--add-root", "claude", str(skills), "local", "--hosts", "claude"]) == 0
+    capsys.readouterr()
+    assert main(["route", "--host", "codex", "--json", "Review", "security", "threats"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "recommend"
+    assert payload["handoff"]["requesting_host"] == "codex"
+    assert payload["handoff"]["target_host"] == "claude"
+    assert payload["handoff"]["cross_host"] is True
+    assert payload["handoff"]["approval_required"] is True
+    assert payload["evidence"][0]["hosts"] == ["claude"]
+
+
+def test_unknown_host_scope_is_visible_but_never_prepares_handoff(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    unknown = Capability(
+        "unknown-scope", "legacy", "Review security threats", (),
+        ("review", "security", "threats"), "skill:unknown-scope", "local", hosts=None,
+    )
+    monkeypatch.setattr("router.cli._seed_capabilities", lambda: (unknown,))
+    monkeypatch.setattr("router.cli.discover_inventory", lambda config: ())
+
+    assert main(["route", "--host", "codex", "--json", "Review", "security", "threats"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["status"] == "clarify"
+    assert payload["evidence"][0]["hosts"] is None
+    assert "handoff" not in payload
+
+
+def test_unknown_host_cross_host_match_is_not_actionable():
+    from router.cli import _decision_payload
+    from router.models import Capability, RouteDecision
+
+    selected = Capability(
+        "known", "fixture", "Review authentication security", (),
+        ("review", "authentication", "security"), "skill:known", "local", hosts=("codex",),
+    )
+    unknown = Capability(
+        "unknown", "legacy", "Review authentication security", (),
+        ("authentication", "security"), "skill:unknown", "local", hosts=None,
+    )
+    decision = RouteDecision("recommend", "Review authentication security", ("known",), "best match", 0.9)
+
+    payload = _decision_payload(decision, (selected, unknown), "codex")
+
+    assert payload["handoff"]["target_host"] == "codex"
+    assert payload["cross_host_matches"] == [{
+        "id": "unknown",
+        "kind": "skill",
+        "source": "legacy",
+        "trust": "local",
+        "hosts": None,
+        "matched_triggers": ["authentication", "security"],
+        "actionable": False,
+        "availability": "host_unknown",
+    }]
+
+
+@pytest.mark.parametrize(
+    "request_text, local_triggers, cross_host_triggers",
+    [
+        (
+            "Review UI design, but not security authentication.",
+            ("review", "ui", "design"),
+            ("security", "authentication"),
+        ),
+        (
+            "Review authentication security; summarize 'UI design'.",
+            ("review", "authentication", "security"),
+            ("ui", "design"),
+        ),
+    ],
+)
+def test_cli_cross_host_matches_exclude_negated_and_quoted_triggers(
+    monkeypatch, tmp_path, capsys, request_text, local_triggers, cross_host_triggers
+):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    capabilities = (
+        Capability(
+            "local-review", "codex", "Local review", (), local_triggers,
+            "agent:local-review", "local", kind="agent", hosts=("codex",),
+        ),
+        Capability(
+            "cross-host-review", "claude", "Cross-host review", (), cross_host_triggers,
+            "agent:cross-host-review", "local", kind="agent", hosts=("claude",),
+        ),
+    )
+    monkeypatch.setattr("router.cli._seed_capabilities", lambda: capabilities)
+    monkeypatch.setattr("router.cli.discover_inventory", lambda config: ())
+
+    assert main(["route", "--host", "codex", "--json", request_text]) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["status"] == "recommend"
+    assert payload["candidates"] == ["local-review"]
+    assert all(match["id"] != "cross-host-review" for match in payload["cross_host_matches"])
+
+
+def test_config_persists_explicit_hosts_for_skill_and_agent_roots(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    assert main(["config", "--add-root", "skills", str(tmp_path / "skills"), "local",
+                 "--hosts", "codex,claude"]) == 0
+    capsys.readouterr()
+    assert main(["config", "--add-agent-root", "agents", str(tmp_path / "agents"), "local", "opencode"]) == 0
+    roots = {root["name"]: root for root in json.loads(capsys.readouterr().out)["roots"]}
+    assert roots["skills"]["kind"] == "skill"
+    assert roots["skills"]["hosts"] == ["codex", "claude"]
+    assert roots["agents"]["kind"] == "agent"
+    assert roots["agents"]["hosts"] == ["opencode"]
+
+
+def test_config_distinguishes_unknown_hosts_from_explicit_empty_hosts(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    unknown_path = tmp_path / "unknown-skills"
+    empty_path = tmp_path / "empty-skills"
+    unknown_path.mkdir()
+    empty_path.mkdir()
+
+    assert main(["config", "--add-root", "unknown", str(unknown_path), "local"]) == 0
+    unknown_roots = json.loads(capsys.readouterr().out)["roots"]
+    assert next(root for root in unknown_roots if root["name"] == "unknown")["hosts"] is None
+
+    assert main([
+        "config", "--add-root", "unavailable", str(empty_path), "local", "--hosts", ""
+    ]) == 0
+    all_roots = json.loads(capsys.readouterr().out)["roots"]
+    assert next(root for root in all_roots if root["name"] == "unavailable")["hosts"] == []
+
+
+def test_route_json_bounds_candidates_and_all_opts_in(monkeypatch, tmp_path, capsys):
+    from router.models import Capability
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    capabilities = tuple(
+        Capability(
+            f"cap-{index:03}", "fixture", "Review security", (),
+            ("review", "security"), f"skill:cap-{index:03}", "local",
+        )
+        for index in range(30)
+    )
+    monkeypatch.setattr("router.cli._seed_capabilities", lambda: ())
+    monkeypatch.setattr("router.cli.discover_inventory", lambda config: capabilities)
+
+    assert main(["route", "--json", "Review", "security"]) == 0
+    bounded = json.loads(capsys.readouterr().out)
+    assert bounded["candidate_total"] == 30
+    assert bounded["candidates_truncated"] is True
+    assert len(bounded["candidates"]) == 20
+    assert len(bounded["evidence"]) == 20
+
+    assert main(["route", "--json", "--all", "Review", "security"]) == 0
+    full = json.loads(capsys.readouterr().out)
+    assert full["candidates_truncated"] is False
+    assert len(full["candidates"]) == 30
+    assert len(full["evidence"]) == 30
+
+
+def test_route_text_caps_candidate_output_at_ten_without_duplicates(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    capabilities = tuple(
+        Capability(
+            f"cap-{index:03}", "fixture", "Review security", (),
+            ("review", "security"), f"skill:cap-{index:03}", "local",
+        )
+        for index in range(30)
+    )
+    monkeypatch.setattr("router.cli._seed_capabilities", lambda: ())
+    monkeypatch.setattr("router.cli.discover_inventory", lambda config: capabilities)
+
+    assert main(["route", "Review", "security"]) == 0
+    output = capsys.readouterr().out
+    displayed = [line for line in output.splitlines() if line.startswith("- ")]
+    displayed_ids = [line.split()[1] for line in displayed]
+
+    assert "30 candidates matched; showing the first 10." in output
+    assert "Use --json --all for the full result." in output
+    assert len(displayed) == 10
+    assert len(set(displayed_ids)) == 10
+
+
+def test_route_all_requires_json(capsys):
+    assert main(["route", "--all", "Review", "security"]) == 2
+    assert "--all requires --json" in capsys.readouterr().err
 
 
 def test_doctor_private_state_rule_matches_route(monkeypatch, tmp_path, capsys):

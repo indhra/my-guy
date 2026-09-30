@@ -1,6 +1,7 @@
 import os
 
 import pytest
+import router.discovery as discovery
 
 from router.config import SkillRoot
 from router.discovery import discover_named_roots, discover_skills
@@ -112,7 +113,8 @@ def test_trusted_symlink_root_does_not_become_routable(tmp_path):
     skill.write_text("---\nname: review\ndescription: Review security.\n---\n")
     linked = tmp_path / "linked"
     linked.symlink_to(real, target_is_directory=True)
-    assert discover_named_roots((SkillRoot("linked", str(linked), "local"),)) == ()
+    with pytest.raises(ValueError, match="symlink"):
+        SkillRoot("linked", str(linked), "local")
 
 
 def test_shared_writable_trusted_root_does_not_become_routable(tmp_path):
@@ -122,3 +124,51 @@ def test_shared_writable_trusted_root_does_not_become_routable(tmp_path):
     skill.write_text("---\nname: review\ndescription: Review security.\n---\n")
     root.chmod(0o777)
     assert discover_named_roots((SkillRoot("shared", str(root), "local"),)) == ()
+
+
+def test_irrelevant_entries_consume_bounded_walk_budget(tmp_path, monkeypatch):
+    root = tmp_path / "large"
+    root.mkdir()
+    (root / "SKILL.md").write_text(
+        "---\nname: review\ndescription: Review security.\n---\n",
+        encoding="utf-8",
+    )
+    for index in range(10):
+        nested = root / f"tree-{index:02d}"
+        nested.mkdir()
+        for file_index in range(4):
+            (nested / f"irrelevant-{file_index:02d}.txt").write_text("data", encoding="utf-8")
+    for index in range(10):
+        (root / f"irrelevant-{index:02d}.txt").write_text("data", encoding="utf-8")
+
+    budget = 40
+    monkeypatch.setattr(discovery, "MAX_SKILLS_PER_ROOT", budget)
+    real_scandir = os.scandir
+    observed = {"entries": 0}
+
+    class CountingScandir:
+        def __init__(self, path):
+            self._handle = real_scandir(path)
+
+        def __enter__(self):
+            self._handle.__enter__()
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return self._handle.__exit__(exc_type, exc, traceback)
+
+        def __iter__(self):
+            for entry in self._handle:
+                observed["entries"] += 1
+                yield entry
+
+    monkeypatch.setattr(discovery.os, "scandir", CountingScandir)
+
+    # Even though the valid skill file is encountered early, crossing the
+    # budget discards this root instead of returning enumeration-order partials.
+    assert discover_skills([root]) == ()
+    assert observed["entries"] == budget + 1
+
+    observed["entries"] = 0
+    assert discovery.unsafe_skill_files(root) == ((str(root), "skill root entry limit exceeded"),)
+    assert observed["entries"] == budget + 1
