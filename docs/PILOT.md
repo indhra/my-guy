@@ -130,9 +130,10 @@ Before the first dry-run task, freeze the scorecard, acceptable-route rubric,
 arm-order method, and these decisions in a dated local copy:
 
 - **Dry run:** proceed to the main pilot only if all three participants can
-  complete the paired protocol without a privacy breach, unauthorized action,
-  or pilot safety-stop suggestion. Fix unclear instructions and restart the
-  affected dry-run tasks before counting main-pilot data.
+  complete the observational dry-run protocol without a privacy breach,
+  unauthorized action, or pilot safety-stop suggestion. Fix unclear
+  instructions and restart the affected dry-run tasks before counting
+  main-pilot data.
 - **Main pilot:** any privacy breach, unauthorized action, or pilot safety-stop
   suggestion pauses enrollment and triggers review. If My Guy has fewer correct
   initial routes than the native arm on the paired tasks, or any actionable
