@@ -5,6 +5,7 @@ import os
 import pytest
 
 from router.cli import main
+from router.models import Capability
 
 
 REQUEST_LIMIT = 1_048_576
@@ -337,6 +338,47 @@ def test_unknown_host_cross_host_match_is_not_actionable():
         "actionable": False,
         "availability": "host_unknown",
     }]
+
+
+@pytest.mark.parametrize(
+    "request_text, local_triggers, cross_host_triggers",
+    [
+        (
+            "Review UI design, but not security authentication.",
+            ("review", "ui", "design"),
+            ("security", "authentication"),
+        ),
+        (
+            "Review authentication security; summarize 'UI design'.",
+            ("review", "authentication", "security"),
+            ("ui", "design"),
+        ),
+    ],
+)
+def test_cli_cross_host_matches_exclude_negated_and_quoted_triggers(
+    monkeypatch, tmp_path, capsys, request_text, local_triggers, cross_host_triggers
+):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    capabilities = (
+        Capability(
+            "local-review", "codex", "Local review", (), local_triggers,
+            "agent:local-review", "local", kind="agent", hosts=("codex",),
+        ),
+        Capability(
+            "cross-host-review", "claude", "Cross-host review", (), cross_host_triggers,
+            "agent:cross-host-review", "local", kind="agent", hosts=("claude",),
+        ),
+    )
+    monkeypatch.setattr("router.cli._seed_capabilities", lambda: capabilities)
+    monkeypatch.setattr("router.cli.discover_inventory", lambda config: ())
+
+    assert main(["route", "--host", "codex", "--json", request_text]) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["status"] == "recommend"
+    assert payload["candidates"] == ["local-review"]
+    assert all(match["id"] != "cross-host-review" for match in payload["cross_host_matches"])
 
 
 def test_config_persists_explicit_hosts_for_skill_and_agent_roots(monkeypatch, tmp_path, capsys):

@@ -1,5 +1,6 @@
 import re
 from collections.abc import Iterable
+from typing import NamedTuple
 
 from .models import Capability, RouteDecision
 from .query import exclusion_tokens, explicit_abstention, matched_aliases, routing_spans, uncertain_exclusion
@@ -15,6 +16,13 @@ def _tokens(text: str) -> set[str]:
 def _evidence(matched: set[str], aliases: tuple[tuple[str, str], ...]) -> str:
     parts = [*sorted(matched), *(f"alias '{phrase}' -> {trigger}" for phrase, trigger in aliases)]
     return ", ".join(parts)
+
+
+class CapabilityMatch(NamedTuple):
+    score: int
+    capability: Capability
+    matched_triggers: tuple[str, ...]
+    matched_aliases: tuple[tuple[str, str], ...]
 
 
 def route(
@@ -116,6 +124,17 @@ def route(
         top = [item for item in scored if item[0] == best_score]
         unknown = [item for item in top if item[1].hosts is None]
         known = [item for item in top if item[1].hosts is not None]
+        if unknown:
+            return RouteDecision(
+                status="clarify",
+                request=request,
+                candidates=tuple(item[1].id for item in top),
+                reason=(
+                    "A top-scoring capability has unknown host availability; "
+                    "configure explicit host coverage before routing."
+                ),
+                confidence=0.0,
+            )
         if not known:
             return RouteDecision(
                 status="clarify",
@@ -187,3 +206,48 @@ def route(
         reason=f"Multiple capabilities matched; convene specialists. Evidence: {evidence}.",
         confidence=min(0.9, 0.4 + (0.1 * len(selected))),
     )
+
+
+def _match_capabilities(
+    request: str, capabilities: Iterable[Capability]
+) -> tuple[tuple[CapabilityMatch, ...], bool]:
+    if explicit_abstention(request) or uncertain_exclusion(request):
+        return (), False
+
+    clean_request, excluded_text = routing_spans(request)
+    text = _tokens(clean_request)
+    aliases = matched_aliases(clean_request)
+    excluded = exclusion_tokens(excluded_text)
+    excluded_alias_triggers = {trigger for _, trigger in matched_aliases(excluded_text)}
+    scored: list[CapabilityMatch] = []
+    excluded_matches = False
+    for capability in capabilities:
+        matched = text.intersection(capability.triggers)
+        applicable_aliases = tuple(alias for alias in aliases if alias[1] in capability.triggers)
+        if not matched and not applicable_aliases:
+            continue
+        domain_tokens = set().union(*(_tokens(domain) for domain in capability.domains))
+        if (
+            excluded.intersection(set(capability.triggers) | domain_tokens)
+            or excluded_alias_triggers.intersection(capability.triggers)
+        ):
+            excluded_matches = True
+            continue
+        score = len(matched) + 2 * len(applicable_aliases)
+        scored.append(
+            CapabilityMatch(score, capability, tuple(sorted(matched)), applicable_aliases)
+        )
+    scored.sort(key=lambda item: (-item.score, item.capability.id))
+    return tuple(scored), excluded_matches
+
+
+def matching_capabilities(
+    request: str, capabilities: Iterable[Capability]
+) -> tuple[CapabilityMatch, ...]:
+    """Return evidence-filtered matches with the same query semantics as route().
+
+    Quoted, excluded, informational, and explicit-abstention text is omitted.
+    This supports evidence display; callers must still apply route's trust and
+    host-availability gates before presenting an actionable handoff.
+    """
+    return _match_capabilities(request, capabilities)[0]

@@ -123,24 +123,34 @@ def _files(root: Path, suffixes: set[str]) -> tuple[Path, ...]:
         return ()
     found: list[Path] = []
     scanned_entries = 0
-    for directory, subdirs, files in os.walk(root, followlinks=False):
-        allowed_subdirs: list[str] = []
-        entries = sorted([(name, True) for name in subdirs] + [(name, False) for name in files])
-        exhausted = False
-        for name, is_directory in entries:
-            if scanned_entries >= MAX_FILES_PER_ROOT:
-                exhausted = True
-                break
-            scanned_entries += 1
-            path = Path(directory) / name
+    pending = [root]
+    while pending:
+        directory = pending.pop()
+        entries: list[tuple[str, bool, bool]] = []
+        try:
+            with os.scandir(directory) as iterator:
+                for entry in iterator:
+                    scanned_entries += 1
+                    if scanned_entries > MAX_FILES_PER_ROOT:
+                        # Never return a partial inventory after budget exhaustion.
+                        return ()
+                    is_directory = entry.is_dir(follow_symlinks=False)
+                    is_file = entry.is_file(follow_symlinks=False)
+                    entries.append((entry.name, is_directory, is_file))
+        except OSError:
+            # A partially readable tree is not a complete actionable inventory.
+            return ()
+
+        children: list[Path] = []
+        for name, is_directory, is_file in sorted(entries, key=lambda item: item[0]):
+            path = directory / name
             if is_directory:
-                if name.lower() not in IGNORED and not path.is_symlink():
-                    allowed_subdirs.append(name)
-            elif path.suffix.lower() in suffixes and not path.is_symlink() and path.is_file():
+                if name.lower() not in IGNORED:
+                    children.append(path)
+            elif is_file and path.suffix.lower() in suffixes:
                 found.append(path)
-        subdirs[:] = allowed_subdirs
-        if exhausted:
-            break
+        # Stack order keeps traversal deterministic and depth-first.
+        pending.extend(reversed(children))
     return tuple(found)
 
 

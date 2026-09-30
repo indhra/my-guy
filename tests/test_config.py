@@ -53,6 +53,8 @@ def test_skill_root_host_metadata_is_validated():
         SkillRoot("duplicate-host", "/tmp", hosts=("codex", "codex"))
     with pytest.raises(ValueError):
         SkillRoot("ambiguous-agent", "/tmp", kind="agent", hosts=("codex", "claude"))
+    with pytest.raises(ValueError):
+        SkillRoot("unknown-agent", "/tmp", kind="agent", hosts=None)
 
 
 def test_skill_root_rejects_symlinked_path_component(tmp_path):
@@ -98,9 +100,10 @@ def test_default_roots_declare_host_coverage(monkeypatch, tmp_path):
         root_path.mkdir(parents=True)
     roots = default_roots(home=tmp_path, project=project)
     by_name = {root.name: root for root in roots}
-    assert by_name["agents"].hosts == ("codex", "claude", "opencode")
+    assert by_name["agents"].hosts is None
     assert by_name["codex"].hosts == ("codex",)
     assert by_name["opencode"].hosts == ("opencode",)
+    assert by_name["project-agents"].hosts is None
 
 
 def test_config_rejects_duplicate_or_invalid_roots():

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import router.inventory as inventory
@@ -48,6 +49,43 @@ def test_inventory_entry_budget_counts_irrelevant_files(tmp_path, monkeypatch):
     monkeypatch.setattr(inventory, "MAX_FILES_PER_ROOT", 3)
 
     assert inventory._files(root, {".md"}) == ()
+
+
+def test_inventory_flat_directory_stops_consuming_after_budget(tmp_path, monkeypatch):
+    root = tmp_path / "flat"
+    root.mkdir()
+    for index in range(200):
+        (root / f"noise-{index:03}.bin").touch()
+
+    budget = 12
+    consumed = 0
+    original_scandir = os.scandir
+
+    class CountingScandir:
+        def __init__(self, path):
+            self.iterator = original_scandir(path)
+
+        def __enter__(self):
+            self.iterator.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self.iterator.__exit__(*args)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            nonlocal consumed
+            entry = next(self.iterator)
+            consumed += 1
+            return entry
+
+    monkeypatch.setattr(inventory, "MAX_FILES_PER_ROOT", budget)
+    monkeypatch.setattr(inventory.os, "scandir", CountingScandir)
+
+    assert inventory._files(root, {".md"}) == ()
+    assert consumed == budget + 1
 
 
 def test_inventory_skips_unsafe_agent_root(tmp_path):

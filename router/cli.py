@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import re
 import sqlite3
 import sys
 from dataclasses import asdict, replace
@@ -13,7 +12,7 @@ from pathlib import Path
 
 from .catalog import CapabilityCatalog
 from .config import RouterConfig, SkillRoot, app_home, has_symlink_component, load_config, save_config
-from .core import TRUSTED_FOR_ROUTING, route
+from .core import TRUSTED_FOR_ROUTING, matching_capabilities, route
 from .discovery import discover_inventory, unsafe_skill_files
 from .feedback import FeedbackStore
 from .lifecycle import SUPPORTED_HARNESSES, SkillInstaller, standard_skill_roots
@@ -148,7 +147,10 @@ def _decision_payload(decision, capabilities, host: str | None = None, *, includ
     }
     if host is not None:
         payload["requesting_host"] = host
-        tokens = set(re.findall(r"[a-z0-9]+", decision.request.lower()))
+        matched_triggers = {
+            match.capability.id: match.matched_triggers
+            for match in matching_capabilities(decision.request, capabilities)
+        }
         cross_host_matches = [
             {
                 "id": capability.id,
@@ -156,7 +158,7 @@ def _decision_payload(decision, capabilities, host: str | None = None, *, includ
                 "source": capability.source,
                 "trust": capability.trust,
                 "hosts": capability.hosts,
-                "matched_triggers": sorted(tokens.intersection(capability.triggers)),
+                "matched_triggers": list(matched_triggers[capability.id]),
                 "actionable": (
                     capability.hosts is not None
                     and bool(capability.hosts)
@@ -172,7 +174,7 @@ def _decision_payload(decision, capabilities, host: str | None = None, *, includ
             for capability in capabilities
             if (capability.hosts is None or host not in capability.hosts)
             and capability.id not in decision.candidates
-            and tokens.intersection(capability.triggers)
+            and capability.id in matched_triggers
         ]
         cross_host_matches.sort(key=lambda match: (
             not match["actionable"], -len(match["matched_triggers"]), match["id"]

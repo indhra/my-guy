@@ -20,7 +20,7 @@ class SkillRoot:
     path: str
     trust: str = "unverified"
     kind: str = "skill"
-    hosts: tuple[str, ...] = ()
+    hosts: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         if not _ROOT_NAME.fullmatch(self.name):
@@ -29,16 +29,17 @@ class SkillRoot:
             raise ValueError("discovered roots may be local or unverified")
         if self.kind not in {"skill", "agent"}:
             raise ValueError("root kind must be skill or agent")
-        if not isinstance(self.hosts, (tuple, list)) or any(
-            not isinstance(host, str) or host not in {"codex", "claude", "opencode"}
-            for host in self.hosts
-        ):
-            raise ValueError("root hosts must be supported hosts")
-        if len(set(self.hosts)) != len(self.hosts):
-            raise ValueError("root hosts must be unique")
-        if self.kind == "agent" and len(self.hosts) != 1:
+        if self.hosts is not None:
+            if not isinstance(self.hosts, (tuple, list)) or any(
+                not isinstance(host, str) or host not in {"codex", "claude", "opencode"}
+                for host in self.hosts
+            ):
+                raise ValueError("root hosts must be supported hosts or null")
+            if len(set(self.hosts)) != len(self.hosts):
+                raise ValueError("root hosts must be unique")
+            object.__setattr__(self, "hosts", tuple(self.hosts))
+        if self.kind == "agent" and (self.hosts is None or len(self.hosts) != 1):
             raise ValueError("agent roots require one explicit host")
-        object.__setattr__(self, "hosts", tuple(self.hosts))
         if not self.path.strip() or "\x00" in self.path:
             raise ValueError("skill-root path is required")
         normalized = Path(self.path).expanduser()
@@ -79,7 +80,7 @@ def default_roots(home: Path | None = None, project: Path | None = None) -> tupl
     candidates = (
         SkillRoot(
             "agents", str(home / ".agents" / "skills"),
-            hosts=("codex", "claude", "opencode"),
+            hosts=None,
         ),
         SkillRoot("codex", str(home / ".codex" / "skills"), hosts=("codex",)),
         SkillRoot("claude", str(home / ".claude" / "skills"), hosts=("claude",)),
@@ -88,7 +89,7 @@ def default_roots(home: Path | None = None, project: Path | None = None) -> tupl
         ),
         SkillRoot(
             "project-agents", str(project / ".agents" / "skills"),
-            hosts=("codex", "claude", "opencode"),
+            hosts=None,
         ),
         SkillRoot(
             "project-codex", str(project / ".codex" / "skills"), hosts=("codex",)
