@@ -1,19 +1,23 @@
 # Releasing My Guy
 
-Before publishing the first tag, merge the tagged-install validation PR. After
-the annotated `v0.1.0` tag exists, manually dispatch **Tagged install validation**
-on `main` with `expected_sha` set to the exact 40-character `main` commit SHA.
-The workflow fails unless the dispatch commit and the annotated tag both match
-that SHA. It installs `git+https://github.com/indhra/my-guy.git@v0.1.0` from
-the URL via pipx and venv on Ubuntu and macOS (Python 3.11), verifies package
-provenance and runs disposable Claude/Codex/OpenCode CLI lifecycles. It does not
-prove native host application recognition or independent agent usefulness.
+The `v0.1.0` alpha prerelease was published from commit
+`c6edf09de6a9fcd6df80ae7116f0735a5ecb0d7f` with wheel, source
+distribution, and `SHA256SUMS` assets. Its
+[tagged install validation](https://github.com/indhra/my-guy/actions/runs/36566743690)
+passed on Ubuntu and macOS (Python 3.11). The workflow verifies the annotated
+tag against the dispatch commit, installs the tagged URL through a pipx venv,
+and runs disposable Claude/Codex/OpenCode CLI lifecycles. It does not prove
+native host application recognition or independent agent usefulness.
+
+The `v0.1.0` checklist below records the historical release procedure; its
+tag and publication steps are complete. Keep the same review, test, checksum,
+and approval gates for future versions, using their own version and exact commit.
 
 The first release channel is GitHub Releases. The Python distribution is named `agent-router`; the command is `my-guy`. Release publication, repository settings, and tags require separate human approval. No workflow publishes automatically.
 
 Before tagging, the maintainer should confirm that `main` requires a reviewed PR and passing CI, release tags cannot be moved casually, private vulnerability reporting works, and Dependabot alerts, CodeQL, secret scanning, and push protection have been reviewed in GitHub settings. Repository-setting changes are separate approved actions; this document does not make them happen.
 
-## Candidate gate
+## Historical v0.1.0 candidate gate
 
 1. Merge the reviewed feature branch through a PR. Check that required Linux/macOS CI jobs pass on the exact `main` commit. Check live GitHub `main` and local `main` hashes match before building.
 2. Verify `pyproject.toml` reports `0.1.0`, the proposed tag is `v0.1.0`, and neither a tag nor a GitHub Release with that name already exists. Update dated status and changelog text with release facts in this candidate commit. If the tag or release already exists, stop; never move a public tag.
@@ -21,7 +25,7 @@ Before tagging, the maintainer should confirm that `main` requires a reviewed PR
 4. Build a wheel and source distribution from the exact candidate commit. Run the full tests and `bash scripts/smoke_install.sh dist/*.whl` and `bash scripts/smoke_install.sh dist/*.tar.gz`. The smoke helper installs into an isolated temporary environment and runs the packaged `my-guy` command outside the source checkout for all three host roots.
 5. Run an independent URL-only agent trial for Claude Code, Codex, and OpenCode. Confirm each agent can assess usefulness, find the tagged instructions, detect a missing pack, request approval before trusting a root or replacing an unknown install, install the correct host skill, and report rollback. Record real Linux and macOS evidence. A missing `v0.1.0` tag must result in a clear stop.
 
-## Publish after approval
+## Historical v0.1.0 publication gate
 
 1. Obtain explicit approval for the exact commit SHA, release notes, and public tag. Create an annotated `v0.1.0` tag pointing to that `main` SHA. Recheck the remote tag points to the same commit. Never rewrite or force-push a published tag.
 2. Build or retrieve the tested wheel and source distribution for that commit. Confirm the release directory contains exactly the intended `0.1.0` wheel and source distribution, with no stale files. Generate SHA-256 checksums for those exact artifacts, verify them, and attach wheel, source distribution, and checksums to a human-reviewed GitHub Release. Record the tag, commit SHA, Python versions, supported OS/hosts, and known limits in the notes.
