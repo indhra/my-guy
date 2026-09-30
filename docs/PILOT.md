@@ -83,7 +83,7 @@ Record one row per task and arm, with a participant code and task code only:
 | Before outcomes | Sanitized task category, acceptable route(s), reason for clarify/no-capability, pinned host/model/skills, arm order |
 | Route quality and incidents | Correct selection; appropriate clarification; appropriate no-capability response; strict routing-evaluation unsafe actionable, pilot safety-stop suggestion, unauthorized action, and privacy breach as separate yes/no fields with sanitized reasons |
 | Evidence | Whether the route gave usable source/evidence for its choice, and whether the participant could inspect it |
-| Effort | Paired route-phase time, steps, tool calls, and available tokens; setup effort separately; end-to-end effort only for independently repeatable paired copies, otherwise `N/A (unpaired)` |
+| Effort | Paired route-phase time, steps, tool calls, and available tokens; setup effort separately; full-task effort is always `N/A` in this routing-only exercise |
 | Outcome | `N/A` task completion for this routing exercise; participant-observed friction and protocol deviations. A separate full-task study needs independent equivalent copies. |
 
 Count each route result, including misses, abstentions, and tasks that lack an
@@ -146,8 +146,9 @@ wins, misses, clarifications, no-capability cases, exclusions, withdrawal counts
 deviations, setup burden, and unavailable measurements. Report per-arm counts
 of strict unsafe actionable results, pilot safety-stop suggestions,
 unauthorized actions, and privacy breaches separately, alongside route-phase
-distributions and paired differences, and how many end-to-end results were
-unpaired. Suppress public subgroup cells of fewer than five people; roll them
+distributions and paired differences for scorable matched pairs only. Keep
+observational dry-run results separate and full-task outcomes `N/A`. Suppress
+public subgroup cells of fewer than five people; roll them
 into broader totals. Publish only explicitly consented, sanitized quotes.
 Any later task-completion study is separate and secondary. State the small sample, self-selected
 participants, task mix, possible order effects, and lack of blinded scoring.
