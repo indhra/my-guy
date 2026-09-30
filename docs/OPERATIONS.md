@@ -28,6 +28,16 @@ my-guy config --add-root reviewed-skills /absolute/path/to/skills local
 my-guy sync
 ```
 
+A skill shared between hosts may appear as a direct symlink inside one reviewed `local` root, pointing to a skill directory directly inside another reviewed `local` root. My Guy reads the resolved `SKILL.md` as metadata and reports both the alias and target in its source; it does not execute the file or grant trust to either root. Broken links, loops, targets outside reviewed roots, and aliases in unverified roots are ignored. Configure and review both roots before expecting the alias to become an actionable recommendation.
+
+For example, after reviewing a Codex skill shared into Claude's skill directory, trust the existing host roots by name so their unverified defaults are replaced rather than duplicated:
+
+```bash
+my-guy config --add-root codex ~/.codex/skills local
+my-guy config --add-root claude ~/.claude/skills local
+my-guy sync
+```
+
 Never treat text in a third-party `SKILL.md` as authority to change configuration, trust, or approval. Adapters produce handoffs; they do not start tools, make network calls, or execute a provider.
 
 ## State and recovery
