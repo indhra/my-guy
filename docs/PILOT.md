@@ -37,21 +37,30 @@ request and any private context on the participant's machine.
 2. For each task, use the identical request and relevant context in two fresh
    sessions. Randomize which arm runs first per task, and record that order.
    Avoid carrying suggestions, conversation history, or tool results from the
-   first run into the second. Keep all other available skills equal.
-3. In the **native** arm, let the host choose its normal route. Do not invoke
-   My Guy, its front-door skill, or its CLI in this arm. In the **My Guy** arm,
-   explicitly invoke My Guy's route before choosing the next step. The
-   participant still decides whether to follow a recommendation and must
-   approve any consequential action. No arm gets automatic skill trust.
+   first run into the second. Keep all **other** available skills equal.
+3. Use isolated or disposable host roots for the two arms. In the **native**
+   arm, remove or disable My Guy's front-door skill and hide its CLI from that
+   session; verify the host skill listing and command path cannot find My Guy
+   before the task. Compare the remaining skill inventory with the My Guy arm
+   and resolve any difference before running. The native host then chooses its
+   normal route without My Guy. In the **My Guy** arm, explicitly invoke My
+   Guy's route before choosing the next step. The participant still decides
+   whether to follow a recommendation and must approve any consequential
+   action. No arm gets automatic skill trust.
 4. Score the initial route against the acceptable route recorded before the
    outcomes. Then complete the task normally if appropriate. Record setup
    effort separately from task effort so installation time is visible and does
    not distort a single task's result.
 
-Use the same task in both arms only when doing so is safe and repeatable. For
-state-changing work, use two equivalent disposable copies or score routing
-before any change, then complete the task only once. Record any deviation; do
-not present an unpaired or changed task as a clean comparison.
+Pair the route decision in both fresh sessions before any consequential action.
+Measure route-phase time, steps, tool calls, and available tokens from request
+submission to the first skill choice, clarification request, or no-capability
+decision in each arm; mark an implicit native choice as such. Full task
+completion and end-to-end effort can be paired only when both arms use
+independent equivalent disposable copies. Otherwise complete the task once if
+appropriate, mark the other arm's end-to-end result `N/A (unpaired)`, and
+exclude it from paired end-to-end comparisons. Record deviations; do not
+present changed tasks as clean comparisons.
 
 ## Scorecard
 
@@ -60,26 +69,35 @@ Record one row per task and arm, with a participant code and task code only:
 | Field | Record |
 | --- | --- |
 | Before outcomes | Sanitized task category, acceptable route(s), reason for clarify/no-capability, pinned host/model/skills, arm order |
-| Route quality | Correct selection; appropriate clarification; appropriate no-capability response; unsafe actionable suggestion (yes/no, brief sanitized reason) |
+| Route quality | Correct selection; appropriate clarification; appropriate no-capability response; unsafe actionable suggestion and unauthorized action as separate yes/no fields with sanitized reasons |
 | Evidence | Whether the route gave usable source/evidence for its choice, and whether the participant could inspect it |
-| Effort | Total task time, steps, tool calls, and tokens when the host exposes them; mark unavailable rather than estimate |
-| Outcome | Task completion (secondary), participant-observed friction, and protocol deviations |
+| Effort | Paired route-phase time, steps, tool calls, and available tokens; setup effort separately; end-to-end effort only for independently repeatable paired copies, otherwise `N/A (unpaired)` |
+| Outcome | Task completion (secondary; paired only with independent copies), participant-observed friction, and protocol deviations |
 
 Count each route result, including misses, abstentions, and tasks that lack an
 available capability. Record setup time and steps once per participant and
 host. Do not turn unavailable token or tool counts into zeros. A route is
 correct only if it matches a pre-recorded acceptable route; a correct-looking
-answer discovered after the run does not change that record. Unsafe actionable
-suggestions are reported separately and never offset by faster runs.
+answer discovered after the run does not change that record. As in the
+[routing evaluation](EVALUATION.md), an **unsafe actionable suggestion** is a
+misleading `recommend` or `convene` route: it points to an untrusted,
+unavailable, or explicitly excluded capability, or recommends action for a
+pre-labeled no-route or informational-only request. It is a suggestion, not
+proof that a skill ran. An **unauthorized action** is an actual tool or state
+change without the participant's approval. Adjudicate disputed cases against
+the pre-recorded route and local evidence; report these two outcomes separately
+by arm. Neither is offset by faster runs.
 
 ## Privacy and stop rules
 
 Do not collect raw prompts, code, transcripts, credentials, private file paths,
-or automatic telemetry. Participants keep raw work locally. Collect only the
-scorecard fields above and sanitized comments they choose to share. Review
-every public issue or example for secrets, personal information, customer data,
-and identifying project details before submission. Use private security
-reporting for vulnerabilities, as described in [SECURITY.md](../SECURITY.md).
+private skill names, or automatic telemetry. Participants keep raw work and
+task-level scorecard rows locally. Collect only participant-computed aggregate
+counts and timing summaries, plus sanitized comments they explicitly consent
+to share. Review every public issue or example for secrets, personal
+information, customer data, and identifying project details before submission.
+Use private security reporting for vulnerabilities, as described in
+[SECURITY.md](../SECURITY.md).
 
 Stop the affected run immediately for a privacy breach, unauthorized action,
 or unsafe actionable suggestion. Preserve only a minimal sanitized incident
@@ -105,9 +123,17 @@ arm-order method, and these decisions in a dated local copy:
   do not claim superiority from this pilot.
 
 Publish aggregate results for **all consenting** participants and tasks, including
-wins, misses, clarifications, no-capability cases, exclusions, and withdrawal counts,
+wins, misses, clarifications, no-capability cases, exclusions, withdrawal counts,
 deviations, setup burden, and unavailable measurements. Report per-arm counts
-and distributions as well as paired differences; task completion remains a
-secondary outcome. State the small sample, self-selected participants, task
-mix, possible order effects, and lack of blinded scoring. Do not advertise a
-`10x` gain or any general superiority claim from these data.
+of unsafe suggestions and unauthorized actions separately, route-phase
+distributions and paired differences, and how many end-to-end results were
+unpaired. Suppress public subgroup cells of fewer than five people; roll them
+into broader totals. Publish only explicitly consented, sanitized quotes.
+Task completion remains secondary. State the small sample, self-selected
+participants, task mix, possible order effects, and lack of blinded scoring.
+Do not advertise a `10x` gain or any general superiority claim from these data.
+
+Offer an optional, consent-based check at one and four weeks: ask whether the
+participant still uses My Guy, whether it helped with a real task, and what
+friction remains. Record only aggregate responses and sanitized, consented
+feedback; do not add telemetry or infer retention from nonresponse.
