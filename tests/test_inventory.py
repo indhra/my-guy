@@ -127,6 +127,48 @@ def test_claude_plugin_enablement_obeys_project_local_override(tmp_path):
     assert discover_inventory(RouterConfig(), home=home, project=tmp_path / "elsewhere") == ()
 
 
+def test_claude_plugin_install_path_requires_managed_or_explicit_trusted_root(tmp_path):
+    home = tmp_path / "home"
+    project = tmp_path / "project"
+    plugin = tmp_path / "custom-storage" / "review"
+    _write(plugin / "skills" / "review" / "SKILL.md", "---\nname: review\ndescription: Review work.\n---\n")
+    _write(
+        home / ".claude" / "plugins" / "installed_plugins.json",
+        '{"plugins":{"review@market":[{"scope":"user",'
+        f'"installPath":"{plugin}"' + "}]}}",
+    )
+    _write(home / ".claude" / "settings.json", '{"enabledPlugins":{"review@market":true}}')
+
+    assert inventory._plugin_roots(home, project, RouterConfig()) == ()
+
+    trusted = RouterConfig(roots=(
+        SkillRoot("claude-plugin-store", str(plugin.parent), "local", hosts=("claude",)),
+    ))
+    items = discover_inventory(trusted, home=home, project=project)
+    assert [(item.invocation, item.hosts, item.trust) for item in items] == [
+        ("skill:review", ("claude",), "local"),
+    ]
+
+
+def test_skill_hosts_infer_only_exact_canonical_layouts(tmp_path):
+    home = tmp_path / "home"
+    project = tmp_path / "project"
+    canonical = home / ".codex" / "skills"
+    custom = tmp_path / "opencode" / ".claude" / "skills"
+    _write(canonical / "review" / "SKILL.md", "---\nname: review\ndescription: Review.\n---\n")
+    _write(custom / "review" / "SKILL.md", "---\nname: review\ndescription: Review.\n---\n")
+
+    inferred = discover_inventory(
+        RouterConfig(roots=(SkillRoot("canonical", str(canonical)),)), home=home, project=project
+    )
+    unknown = discover_inventory(
+        RouterConfig(roots=(SkillRoot("misleading", str(custom)),)), home=home, project=project
+    )
+
+    assert inferred[0].hosts == ("codex",)
+    assert unknown[0].hosts is None
+
+
 def test_opencode_jsonc_agent_is_static_and_project_config_wins(tmp_path):
     home = tmp_path / "home"
     project = tmp_path / "project"

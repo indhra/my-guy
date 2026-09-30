@@ -100,12 +100,23 @@ def test_requesting_host_explains_cross_host_handoff():
 def test_host_specific_route_clarifies_unknown_availability():
     unknown = Capability(
         "unknown-host", "custom", "Review security", (),
-        ("review", "security"), "skill:unknown-host", "local", hosts=(),
+        ("review", "security"), "skill:unknown-host", "local",
     )
     decision = route("Review security", (unknown,), host="codex")
     assert decision.status == "clarify"
-    assert "no known host availability" in decision.reason
+    assert "unknown host availability" in decision.reason
     assert decision.confidence == 0.0
+
+
+def test_host_specific_route_clarifies_explicitly_empty_availability():
+    unavailable = Capability(
+        "unavailable-host", "custom", "Review security", (),
+        ("review", "security"), "skill:unavailable-host", "local", hosts=(),
+    )
+    decision = route("Review security", (unavailable,), host="codex")
+    assert decision.status == "clarify"
+    assert decision.candidates == ("unavailable-host",)
+    assert "explicitly unavailable" in decision.reason
 
 
 def test_requesting_host_does_not_bypass_unverified_tie_gate():

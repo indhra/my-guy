@@ -157,15 +157,20 @@ def _decision_payload(decision, capabilities, host: str | None = None, *, includ
                 "trust": capability.trust,
                 "hosts": capability.hosts,
                 "matched_triggers": sorted(tokens.intersection(capability.triggers)),
-                "actionable": bool(capability.hosts) and capability.trust in TRUSTED_FOR_ROUTING,
+                "actionable": (
+                    capability.hosts is not None
+                    and bool(capability.hosts)
+                    and capability.trust in TRUSTED_FOR_ROUTING
+                ),
                 "availability": (
-                    "host_unknown" if not capability.hosts
+                    "host_unknown" if capability.hosts is None
+                    else "unavailable" if not capability.hosts
                     else "provenance_required" if capability.trust not in TRUSTED_FOR_ROUTING
                     else "cross_host"
                 ),
             }
             for capability in capabilities
-            if host not in capability.hosts
+            if (capability.hosts is None or host not in capability.hosts)
             and capability.id not in decision.candidates
             and tokens.intersection(capability.triggers)
         ]
@@ -383,7 +388,10 @@ def _main(argv: list[str] | None = None) -> int:
                     for kind in ("skill", "agent")
                 },
                 "by_host": {
-                    host: sum(host in capability.hosts for capability in discovered)
+                    host: sum(
+                        capability.hosts is not None and host in capability.hosts
+                        for capability in discovered
+                    )
                     for host in ("codex", "claude", "opencode")
                 },
             },
@@ -471,18 +479,22 @@ def _main(argv: list[str] | None = None) -> int:
             else:
                 print(decision.reason)
             for item in evidence[:limit]:
+                hosts = item["hosts"]
+                host_label = "unknown" if hosts is None else ",".join(hosts) or "none"
                 print(
                     f"- {item['id']} [{item['kind']}, {item['trust']}] via "
-                    f"{item['invocation']} ({item['source']}; hosts={','.join(item['hosts'])})"
+                    f"{item['invocation']} ({item['source']}; hosts={host_label})"
                 )
             if "handoff" in payload:
                 handoff = payload["handoff"]
                 print(f"Prepared handoff: {handoff['requesting_host']} -> {handoff['target_host']} (approval required)")
             cross_host_matches = payload.get("cross_host_matches", ())
             for match in cross_host_matches[:3]:
+                hosts = match["hosts"]
+                host_label = "unknown host" if hosts is None else ",".join(hosts) or "no hosts"
                 print(
                     f"Cross-host match: {match['id']} [{match['trust']}; {match['availability']}] "
-                    f"on {','.join(match['hosts']) or 'unknown host'}"
+                    f"on {host_label}"
                 )
             if len(cross_host_matches) > 3:
                 print(f"{len(cross_host_matches) - 3} more cross-host matches; use --json for the full list.")

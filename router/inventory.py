@@ -18,7 +18,6 @@ from .path_safety import unsafe_skill_file, unsafe_skill_root
 MAX_METADATA_BYTES = 1_048_576
 # This is an entry budget (files and directories), not a result budget.
 MAX_FILES_PER_ROOT = 10_000
-HOSTS = ("codex", "claude", "opencode")
 IGNORED = {".git", ".trash", "trash", "node_modules", "__pycache__"}
 
 
@@ -204,20 +203,21 @@ def _agents(name: str, root: Path, host: str, trust: str = "unverified") -> tupl
     return tuple(found)
 
 
-def _skill_hosts(root: SkillRoot) -> tuple[str, ...]:
-    # Provisional host inference pending the user's inventory-host policy choice.
+def _skill_hosts(
+    root: SkillRoot, *, home: Path, project: Path
+) -> tuple[str, ...] | None:
+    """Use explicit host metadata or an exact, recognized root layout."""
     if root.hosts:
         return root.hosts
-    parts = {part.lower() for part in Path(root.path).parts}
-    if ".codex" in parts:
-        return ("codex",)
-    if ".claude" in parts:
-        return ("claude",)
-    if ".opencode" in parts or "opencode" in parts:
-        return ("opencode",)
-    if ".agents" in parts:
-        return HOSTS
-    return ()
+    canonical_roots = {
+        (home / ".codex" / "skills").resolve(): ("codex",),
+        (project / ".codex" / "skills").resolve(): ("codex",),
+        (home / ".claude" / "skills").resolve(): ("claude",),
+        (project / ".claude" / "skills").resolve(): ("claude",),
+        (home / ".config" / "opencode" / "skills").resolve(): ("opencode",),
+        (project / ".opencode" / "skills").resolve(): ("opencode",),
+    }
+    return canonical_roots.get(Path(root.path).resolve())
 
 
 def _opencode_config_agents(home: Path, project: Path) -> tuple[Capability, ...]:
@@ -261,7 +261,9 @@ def _opencode_config_agents(home: Path, project: Path) -> tuple[Capability, ...]
     return tuple(found)
 
 
-def _plugin_roots(home: Path, project: Path) -> tuple[tuple[str, Path, str], ...]:
+def _plugin_roots(
+    home: Path, project: Path, config: RouterConfig
+) -> tuple[tuple[str, Path, str], ...]:
     result: list[tuple[str, Path, str]] = []
     claude_home = home / ".claude"
     enabled: dict[str, bool] = {}
@@ -289,13 +291,28 @@ def _plugin_roots(home: Path, project: Path) -> tuple[tuple[str, Path, str], ...
                 if scope not in {"user", "project", "local"} or not isinstance(install_path, str):
                     continue
                 path = Path(install_path).expanduser()
-                # Provisional: installPath containment policy is awaiting the user's choice.
-                if not path.is_absolute() or path.is_symlink() or not path.is_dir():
+                if not path.is_absolute() or unsafe_skill_root(path) or not path.is_dir():
+                    continue
+                resolved_path = path.resolve()
+                managed_storage = (claude_home / "plugins").resolve()
+                is_managed = resolved_path.is_relative_to(managed_storage)
+                explicitly_trusted = any(
+                    root.kind == "skill"
+                    and root.trust == "local"
+                    and "claude" in root.hosts
+                    and resolved_path.is_relative_to(Path(root.path).resolve())
+                    for root in config.roots
+                )
+                if not (is_managed or explicitly_trusted):
                     continue
                 if scope in {"project", "local"}:
                     bound = entry.get("projectPath")
                     if not isinstance(bound, str) or Path(bound).resolve() != project.resolve():
                         continue
+                # The configured trusted root is scanned above as a normal
+                # root; adding this same install path again would duplicate it.
+                if explicitly_trusted:
+                    continue
                 key = sha256(plugin_id.encode()).hexdigest()[:10]
                 location = sha256(str(path).encode()).hexdigest()[:10]
                 result.append((f"claude-plugin-{key}-{location}", path, "claude"))
@@ -354,7 +371,10 @@ def discover_inventory(
             configured_agent_paths.add(Path(root.path).resolve())
             found.extend(_agents(root.name, Path(root.path), root.hosts[0], root.trust))
         else:
-            found.extend(replace(item, hosts=_skill_hosts(root)) for item in discover_named_roots((root,)))
+            found.extend(
+                replace(item, hosts=_skill_hosts(root, home=home, project=project))
+                for item in discover_named_roots((root,))
+            )
 
     agent_roots = (
         ("codex-agent", home / ".codex" / "agents", "codex"),
@@ -369,7 +389,7 @@ def discover_inventory(
             found.extend(_agents(name, root, host))
 
     found.extend(_opencode_config_agents(home, project))
-    for name, path, host in _plugin_roots(home, project):
+    for name, path, host in _plugin_roots(home, project, config):
         skill_paths = (path / "skills", path / ".codex-plugin" / "migrated-command-skills") if host == "codex" else (path / "skills",)
         for index, skill_path in enumerate(skill_paths):
             if not skill_path.is_dir() or skill_path.is_symlink():

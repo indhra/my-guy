@@ -60,12 +60,17 @@ def execute(
         raise PermissionError("clarification decisions cannot be executed")
     if capability.id not in decision.candidates:
         raise PermissionError("capability is not one of the approved route candidates")
-    # Provisional until the legacy-host policy choice is finalized. Explicit
-    # provenance constrains execution; empty provenance retains current adapter
-    # behavior for pre-inventory capabilities.
-    if capability.hosts:
-        adapter_host = getattr(adapter, "harness", None)
-        if adapter_host not in CANONICAL_HOSTS or adapter_host not in capability.hosts:
+    if capability.hosts == ():
+        raise PermissionError("capability has no available hosts")
+    # Harness-specific adapters require explicit host evidence. A generic
+    # adapter with no declared harness remains host-neutral.
+    adapter_host = getattr(adapter, "harness", None)
+    if adapter_host is not None:
+        if adapter_host not in CANONICAL_HOSTS:
+            raise PermissionError("adapter declares an unsupported host")
+        if capability.hosts is None:
+            raise PermissionError("capability host availability is unknown")
+        if adapter_host not in capability.hosts:
             raise PermissionError("adapter host is not available for this capability")
     if approval is None or not approval.matches(decision, capability, request):
         raise ApprovalRequired("matching explicit approval is required before execution")

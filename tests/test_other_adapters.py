@@ -6,7 +6,10 @@ from router.models import Capability, RouteDecision
 
 def test_opencode_adapter_is_provider_shape_neutral():
     decision = RouteDecision("recommend", "Review UI.", ("ui",), "source=gstack", 0.9)
-    capability = Capability("ui", "gstack", "UI review", (), ("ui",), "/gstack", "local")
+    capability = Capability(
+        "ui", "gstack", "UI review", (), ("ui",), "/gstack", "local",
+        hosts=("opencode",),
+    )
     result = execute(decision, capability, decision.request, ApprovalToken.for_execution(decision, capability, decision.request), OpenCodeAdapter(frozenset({"/gstack"})))
 
     assert result.harness == "opencode"

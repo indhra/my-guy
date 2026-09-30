@@ -68,7 +68,10 @@ def route(
     scored.sort(
         key=lambda item: (
             -item[0],
-            0 if host is None or host in item[1].hosts else 1,
+            0
+            if host is None
+            or (item[1].hosts is not None and host in item[1].hosts)
+            else 1,
             item[1].id,
         )
     )
@@ -111,17 +114,35 @@ def route(
     if host is not None:
         best_score = scored[0][0]
         top = [item for item in scored if item[0] == best_score]
-        known = [item for item in top if item[1].hosts]
+        unknown = [item for item in top if item[1].hosts is None]
+        known = [item for item in top if item[1].hosts is not None]
         if not known:
             return RouteDecision(
                 status="clarify",
                 request=request,
                 candidates=tuple(item[1].id for item in top),
-                reason="Matching capabilities have no known host availability; configure their hosts before routing.",
+                reason="Matching capabilities have unknown host availability; rediscover or configure hosts before routing.",
                 confidence=0.0,
             )
-        native = [item for item in known if host in item[1].hosts]
-        selected = native or known
+        available = [item for item in known if item[1].hosts]
+        native = [item for item in available if host in item[1].hosts]
+        selected = native or available
+        if not selected:
+            if unknown:
+                return RouteDecision(
+                    status="clarify",
+                    request=request,
+                    candidates=tuple(item[1].id for item in unknown),
+                    reason="Matching capabilities have unknown host availability; rediscover or configure hosts before routing.",
+                    confidence=0.0,
+                )
+            return RouteDecision(
+                status="clarify",
+                request=request,
+                candidates=tuple(item[1].id for item in known),
+                reason="Matching capabilities are explicitly unavailable on every supported host.",
+                confidence=0.0,
+            )
     else:
         selected = [item for item in scored if item[0] == scored[0][0]]
     if len(selected) == 1:

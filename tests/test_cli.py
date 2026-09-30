@@ -291,6 +291,54 @@ def test_route_prepares_approval_gated_cross_host_handoff(monkeypatch, tmp_path,
     assert payload["evidence"][0]["hosts"] == ["claude"]
 
 
+def test_unknown_host_scope_is_visible_but_never_prepares_handoff(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    skills = tmp_path / "custom-skill-root"
+    monkeypatch.setattr("router.cli._seed_capabilities", lambda: ())
+    skill = skills / "threat-review" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: threat-review\ndescription: Review security threats.\n---\n")
+
+    assert main(["config", "--add-root", "custom", str(skills), "local"]) == 0
+    capsys.readouterr()
+    assert main(["route", "--host", "codex", "--json", "Review", "security", "threats"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+
+    assert payload["status"] == "clarify"
+    assert payload["evidence"][0]["hosts"] is None
+    assert "handoff" not in payload
+
+
+def test_unknown_host_cross_host_match_is_not_actionable():
+    from router.cli import _decision_payload
+    from router.models import Capability, RouteDecision
+
+    selected = Capability(
+        "known", "fixture", "Review authentication security", (),
+        ("review", "authentication", "security"), "skill:known", "local", hosts=("codex",),
+    )
+    unknown = Capability(
+        "unknown", "legacy", "Review authentication security", (),
+        ("authentication", "security"), "skill:unknown", "local", hosts=None,
+    )
+    decision = RouteDecision("recommend", "Review authentication security", ("known",), "best match", 0.9)
+
+    payload = _decision_payload(decision, (selected, unknown), "codex")
+
+    assert payload["handoff"]["target_host"] == "codex"
+    assert payload["cross_host_matches"] == [{
+        "id": "unknown",
+        "kind": "skill",
+        "source": "legacy",
+        "trust": "local",
+        "hosts": None,
+        "matched_triggers": ["authentication", "security"],
+        "actionable": False,
+        "availability": "host_unknown",
+    }]
+
+
 def test_config_persists_explicit_hosts_for_skill_and_agent_roots(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))

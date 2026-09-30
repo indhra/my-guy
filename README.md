@@ -33,3 +33,7 @@ my-guy list security
 The sample request above is a fixed literal. For a user's actual request, pass the text through stdin as data; do not build a shell command from it.
 
 My Guy does not invoke specialists, send prompts to providers, or silently accept third-party instructions. Feedback is off by default and only produces review proposals when enabled. See [Operations](docs/OPERATIONS.md), [Security](SECURITY.md), [Releasing](docs/RELEASING.md), and [Contributing](CONTRIBUTING.md).
+
+## Host-aware inventory work
+
+The agent and plugin inventory expansion is under development and is not part of the published `v0.1.0` release. Its intended behavior is to record whether a capability is available on Codex, Claude Code, or OpenCode, show cross-host matches as prepared handoffs that require operator approval, and treat legacy catalog rows as having unknown host scope until a fresh scan verifies them. See [Architecture](docs/ARCHITECTURE.md) and [Status](docs/STATUS.md) for the limits and release state.

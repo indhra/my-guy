@@ -17,9 +17,9 @@ class Capability:
     invocation: str
     trust: str = "unverified"
     kind: str = "skill"
-    # Empty means no host provenance has been recorded. Execution policy for
-    # legacy entries remains intentionally separate from inventory inference.
-    hosts: tuple[str, ...] = ()
+    # None means host availability is unknown; an empty tuple explicitly means
+    # unavailable on all supported hosts.
+    hosts: tuple[str, ...] | None = None
 
     TRUST_LEVELS: ClassVar[frozenset[str]] = frozenset({"verified", "local", "unverified"})
 
@@ -38,8 +38,10 @@ class Capability:
             raise ValueError(f"unsupported trust level: {self.trust}")
         if self.kind not in {"skill", "agent"}:
             raise ValueError(f"unsupported capability kind: {self.kind}")
-        if not isinstance(self.hosts, tuple) or len(set(self.hosts)) != len(self.hosts) or any(
-            host not in {"codex", "claude", "opencode"} for host in self.hosts
+        if self.hosts is not None and (
+            not isinstance(self.hosts, tuple)
+            or len(set(self.hosts)) != len(self.hosts)
+            or any(host not in {"codex", "claude", "opencode"} for host in self.hosts)
         ):
             raise ValueError("capability hosts must be unique supported hosts")
         object.__setattr__(self, "triggers", tuple(trigger.lower() for trigger in self.triggers))

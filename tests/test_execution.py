@@ -39,6 +39,38 @@ def test_execution_rejects_missing_or_mismatched_approval():
         execute(decision(), capability, "Review security.", ApprovalToken.for_execution(other, capability, "Review security."), adapter)
 
 
+def test_harness_adapter_requires_known_matching_host():
+    class CodexAdapter(FakeAdapter):
+        harness = "codex"
+
+    adapter = CodexAdapter()
+    unknown = Capability(
+        "security", "ecc", "Security review", (), ("security",),
+        "skill:security", "local",
+    )
+    approved = ApprovalToken.for_execution(decision(), unknown, "Review security.")
+    with pytest.raises(PermissionError, match="host availability is unknown"):
+        execute(decision(), unknown, "Review security.", approved, adapter)
+
+    unavailable = Capability(
+        "security", "ecc", "Security review", (), ("security",),
+        "skill:security", "local", hosts=(),
+    )
+    approved = ApprovalToken.for_execution(decision(), unavailable, "Review security.")
+    with pytest.raises(PermissionError, match="no available hosts"):
+        execute(decision(), unavailable, "Review security.", approved, adapter)
+
+
+def test_host_neutral_adapter_still_rejects_explicitly_empty_hosts():
+    unavailable = Capability(
+        "security", "ecc", "Security review", (), ("security",),
+        "skill:security", "local", hosts=(),
+    )
+    approved = ApprovalToken.for_execution(decision(), unavailable, "Review security.")
+    with pytest.raises(PermissionError, match="no available hosts"):
+        execute(decision(), unavailable, "Review security.", approved, FakeAdapter())
+
+
 def test_execution_rejects_unverified_and_unallowlisted_capabilities():
     adapter = FakeAdapter()
     unverified = Capability("unknown", "local-file", "Unknown", (), ("security",), "skill:unknown")
