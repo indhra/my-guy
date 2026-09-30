@@ -1,8 +1,8 @@
 # Project status
 
-Updated: 2026-09-29. This is a dated `v0.1.0` release-candidate snapshot. Check [GitHub Releases](https://github.com/indhra/my-guy/releases) and the `v0.1.0` tag for public availability and the exact release commit; this document is not a publication record. Evidence below comes from the feature branch, not a tagged release.
+Updated: 2026-09-30. [`v0.1.0`](https://github.com/indhra/my-guy/releases/tag/v0.1.0) is a published alpha prerelease from commit `c6edf09de6a9fcd6df80ae7116f0735a5ecb0d7f`. The GitHub Release is the publication record; the dated PR evidence below remains historical.
 
-## Implemented on the release candidate
+## Implemented in v0.1.0
 
 - Harness-neutral capability model, bounded local `SKILL.md` metadata discovery, SQLite catalog, and source-aware routing to `clarify`, `recommend`, or `convene`.
 - Explicit trust filtering, collision and stale-entry handling, confidence gates, preserved dissent, and adapter allowlists.
@@ -10,20 +10,20 @@ Updated: 2026-09-29. This is a dated `v0.1.0` release-candidate snapshot. Check 
 - `my-guy` CLI with a bundled front-door skill and reversible host install, upgrade, disable, and rollback.
 - Opt-in feedback ledger that does not store raw requests and only proposes reviewed changes.
 
-An earlier local alpha review recorded 58 passing tests and closed its critical/high findings. The candidate passed 200 local tests. Its fixed 208-case synthetic routing corpus scored 208/208 labeled decisions with 0/114 unsafe actionable suggestions. This bounded result does not establish safety or better routing on real requests.
+An earlier local alpha review recorded 58 passing tests and closed its critical/high findings. The candidate passed 200 local tests. The fixed 208-case synthetic routing corpus scored 208/208 labeled decisions with 0/114 unsafe actionable suggestions. This bounded result does not establish safety or better routing on real requests.
 
 ## Candidate evidence recorded on 2026-09-29
 
 - PR [#1](https://github.com/indhra/my-guy/pull/1) commit [`354a5d8`](https://github.com/indhra/my-guy/commit/354a5d8cd6843e45b1d099f488725d2e985cc46b) passed all six Linux/macOS × Python 3.11–3.13 jobs in both [push CI](https://github.com/indhra/my-guy/actions/runs/36530074467) and [PR CI](https://github.com/indhra/my-guy/actions/runs/36530077813). Each job built a wheel and source distribution and passed installed-artifact smoke checks outside the checkout.
 - A fresh Linux virtual environment installed the GitHub URL pinned to that commit and reported `my-guy 0.1.0`. A disposable Codex host install reached `ready`; without an approved trusted skill root, doctor correctly reported `needs_capabilities` and the example route returned `clarify`. This is commit-pinned evidence, not a tagged-release or `pipx` trial.
-- These checks cover the PR candidate. Release acceptance applies independently to the exact `main` commit after the reviewed PR is merged.
+- These checks covered the PR candidate. They were separate from the later tagged release validation.
 
-## Release acceptance conditions
+## Published release evidence
 
-- A reviewed PR must be merged, and the exact `main` commit must pass required Linux/macOS CI, the fixed 208-case routing gate, and installed wheel/source-distribution checks. PR-branch results above do not establish this release-commit gate.
-- Agent-facing instructions and CLI output must agree on install, ownership, status, readiness, trust, and recovery behavior.
-- URL-only agent trials must cover Claude Code, Codex, and OpenCode, including no-useful-pack and missing-tag paths.
-- The exact `main` commit, annotated `v0.1.0` tag, release artifacts, SHA-256 checksums, and GitHub Release require separate review before publication. Tag and release publication require explicit approval. [Evaluation](EVALUATION.md) records earlier failures and fixes; passing its synthetic gate cannot rule out missed matches.
+- The annotated `v0.1.0` tag resolves to `c6edf09de6a9fcd6df80ae7116f0735a5ecb0d7f`. The alpha prerelease provides `agent_router-0.1.0-py3-none-any.whl`, `agent_router-0.1.0.tar.gz`, and `SHA256SUMS`.
+- [CI](https://github.com/indhra/my-guy/actions/runs/36555263444) passed on the release commit. The [tagged install validation](https://github.com/indhra/my-guy/actions/runs/36566743690) passed tagged URL install and disposable CLI lifecycle checks on Ubuntu and macOS with Python 3.11.
+- As documented in the [release notes](https://github.com/indhra/my-guy/releases/tag/v0.1.0), OpenCode 1.18.29 listed My Guy through native localhost `GET /skill` and PTY `opencode debug skill` checks. This is native skill visibility for that version, not a real-world usefulness result.
+- Native Claude Code/Codex recognition, independent agent usefulness, and superior routing on real requests remain unproven. The independent URL-only agent trials required by the original candidate checklist were deferred and remain unmet; the consent-based [pilot](PILOT.md) is also future evidence. [Evaluation](EVALUATION.md) records earlier failures and fixes; passing its synthetic gate cannot rule out missed matches.
 
 ## Honest limits
 
