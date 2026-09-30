@@ -1,5 +1,7 @@
 # Opt-in alpha onboarding pilot
 
+For copy-ready invitations, paired prompts, and a private worksheet, see the [participant kit](PILOT_PARTICIPANT.md).
+
 This is a proposed, consent-based way to learn whether the published
 [`v0.1.0` alpha](https://github.com/indhra/my-guy/releases/tag/v0.1.0) helps
 people choose among skills they already use. OpenCode 1.18.29 listed My Guy

@@ -18,7 +18,7 @@ Assess whether My Guy is useful for my local skill setup, then install it only i
 Read the tagged README, docs/AGENT_INSTALL.md, docs/EVALUATION.md, pyproject.toml, relevant CLI/lifecycle code and tests. Explain what is implemented, its limits, and whether I have a useful supported host and reviewed skill pack. Check that the fixed 208-case synthetic corpus has zero unsafe actionable suggestions; do not infer superiority on real requests from it. On Linux/macOS use pipx, or an isolated Python 3.11+ venv if pipx is unavailable. Check existing installations first. Ask before trusting any skill root or replacing an unknown install; installation never grants trust automatically. Follow the selected host's instructions, run version/status/host-aware doctor/sync and a sample route with `my-guy route --stdin --json`. Pass my request as stdin data; never interpolate it into a shell command. Report the exact installed paths, result, and recovery commands. If it will not help my setup yet, tell me why and do not install it.
 ```
 
-The agent's detailed checklist, supported roots, and fallback commands are in [Agent install](docs/AGENT_INSTALL.md). If you want to try it systematically with real tasks, use the opt-in [pilot guide](docs/PILOT.md).
+The agent's detailed checklist, supported roots, and fallback commands are in [Agent install](docs/AGENT_INSTALL.md). If you want to try it systematically with real tasks, use the opt-in [pilot guide](docs/PILOT.md) and [participant kit](docs/PILOT_PARTICIPANT.md).
 
 ## What happens after installation
 
