@@ -2,8 +2,9 @@
 
 This is a proposed, consent-based way to learn whether the published
 [`v0.1.0` alpha](https://github.com/indhra/my-guy/releases/tag/v0.1.0) helps
-people choose among skills they already use. It is not evidence of better
-routing, native host recognition, or a speed multiplier. Read the
+people choose among skills they already use. OpenCode 1.18.29 listed My Guy
+through native skill checks; native Claude Code/Codex recognition and real-world
+usefulness remain unproven. This pilot has no results yet. Read the
 [install guide](AGENT_INSTALL.md), [status](STATUS.md), and [security policy](../SECURITY.md)
 before inviting participants. The CLI recommends; it does not execute providers
 or make third-party skills trustworthy.
@@ -29,8 +30,8 @@ request and any private context on the participant's machine.
 ## Paired run
 
 1. Pin the same host application, model/version, non-My-Guy skill set and
-   trusted-root decisions for both arms. Use the published `v0.1.0` tag; check
-   that it resolves to `c6edf09de6a9fcd6df80ae7116f0735a5ecb0d7f`.
+   trusted-root decisions for both arms. Use the published `v0.1.0` tag and
+   follow the [install guide's](AGENT_INSTALL.md) release check.
    Inspect existing installations and get approval before any replacement or
    trust change, as in the [install guide](AGENT_INSTALL.md).
 2. For each task, use the identical request and relevant context in two fresh

@@ -22,7 +22,8 @@ An earlier local alpha review recorded 58 passing tests and closed its critical/
 
 - The annotated `v0.1.0` tag resolves to `c6edf09de6a9fcd6df80ae7116f0735a5ecb0d7f`. The alpha prerelease provides `agent_router-0.1.0-py3-none-any.whl`, `agent_router-0.1.0.tar.gz`, and `SHA256SUMS`.
 - [CI](https://github.com/indhra/my-guy/actions/runs/36555263444) passed on the release commit. The [tagged install validation](https://github.com/indhra/my-guy/actions/runs/36566743690) passed tagged URL install and disposable CLI lifecycle checks on Ubuntu and macOS with Python 3.11.
-- These CLI checks do not establish native Claude Code, Codex, or OpenCode application recognition, independent agent usefulness, or superior routing on real requests. URL-only agent trials and a consent-based [pilot](PILOT.md) remain future evidence. [Evaluation](EVALUATION.md) records earlier failures and fixes; passing its synthetic gate cannot rule out missed matches.
+- As documented in the [release notes](https://github.com/indhra/my-guy/releases/tag/v0.1.0), OpenCode 1.18.29 listed My Guy through native localhost `GET /skill` and PTY `opencode debug skill` checks. This is native skill visibility for that version, not a real-world usefulness result.
+- Native Claude Code/Codex recognition, independent agent usefulness, and superior routing on real requests remain unproven. The independent URL-only agent trials required by the original candidate checklist were deferred and remain unmet; the consent-based [pilot](PILOT.md) is also future evidence. [Evaluation](EVALUATION.md) records earlier failures and fixes; passing its synthetic gate cannot rule out missed matches.
 
 ## Honest limits
 

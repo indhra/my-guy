@@ -6,12 +6,16 @@ distribution, and `SHA256SUMS` assets. Its
 [tagged install validation](https://github.com/indhra/my-guy/actions/runs/36566743690)
 passed on Ubuntu and macOS (Python 3.11). The workflow verifies the annotated
 tag against the dispatch commit, installs the tagged URL through a pipx venv,
-and runs disposable Claude/Codex/OpenCode CLI lifecycles. It does not prove
-native host application recognition or independent agent usefulness.
+and runs disposable Claude/Codex/OpenCode CLI lifecycles. The separate native
+OpenCode 1.18.29 checks listed My Guy via `GET /skill` and PTY debug output.
+Native Claude Code/Codex recognition and independent agent usefulness remain
+unproven.
 
 The `v0.1.0` checklist below records the historical release procedure; its
-tag and publication steps are complete. Keep the same review, test, checksum,
-and approval gates for future versions, using their own version and exact commit.
+tag and publication steps are complete. The independent URL-only agent trials
+in candidate step 5 were deferred and remain unmet. The OpenCode native skill
+listing above is narrower evidence. Keep the same review, test, checksum, and
+approval gates for future versions, using their own version and exact commit.
 
 The first release channel is GitHub Releases. The Python distribution is named `agent-router`; the command is `my-guy`. Release publication, repository settings, and tags require separate human approval. No workflow publishes automatically.
 
@@ -23,7 +27,7 @@ Before tagging, the maintainer should confirm that `main` requires a reviewed PR
 2. Verify `pyproject.toml` reports `0.1.0`, the proposed tag is `v0.1.0`, and neither a tag nor a GitHub Release with that name already exists. Update dated status and changelog text with release facts in this candidate commit. If the tag or release already exists, stop; never move a public tag.
 3. Review [status](STATUS.md), the agent install prompt, the package contents, open security issues, and any unsupported claims. Run the published fixed 208-case synthetic corpus from [routing evaluation](EVALUATION.md) and require **208/208 labeled decisions and 0/114 unsafe actionable suggestions** with independently reviewed labels. A failing case blocks v0.1.0; do not weaken labels or redefine the metric to pass. This finite corpus does not prove safety or superiority on real requests and cannot rule out false negatives. Confirm GitHub private vulnerability reporting is enabled so the link in `SECURITY.md` works for external reporters. The code remains recommendation-only and never grants trust automatically.
 4. Build a wheel and source distribution from the exact candidate commit. Run the full tests and `bash scripts/smoke_install.sh dist/*.whl` and `bash scripts/smoke_install.sh dist/*.tar.gz`. The smoke helper installs into an isolated temporary environment and runs the packaged `my-guy` command outside the source checkout for all three host roots.
-5. Run an independent URL-only agent trial for Claude Code, Codex, and OpenCode. Confirm each agent can assess usefulness, find the tagged instructions, detect a missing pack, request approval before trusting a root or replacing an unknown install, install the correct host skill, and report rollback. Record real Linux and macOS evidence. A missing `v0.1.0` tag must result in a clear stop.
+5. **Deferred and unmet for v0.1.0:** Run an independent URL-only agent trial for Claude Code, Codex, and OpenCode. Confirm each agent can assess usefulness, find the tagged instructions, detect a missing pack, request approval before trusting a root or replacing an unknown install, install the correct host skill, and report rollback. Record real Linux and macOS evidence. A missing tag must result in a clear stop.
 
 ## Historical v0.1.0 publication gate
 
