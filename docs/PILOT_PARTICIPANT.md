@@ -9,7 +9,7 @@ This voluntary exercise looks at how a coding agent chooses among skills you alr
 
 Copy-ready private invitation:
 
-> Would you opt in to a 30–45 minute My Guy routing exercise, plus setup time? You would choose three genuine tasks and observe how your coding agent chooses skills without and with My Guy. Both routes stop before doing the task. Your prompts and session records stay with you; I ask only for private, sanitized aggregate feedback. I plan to publish anonymous aggregate findings, with any quote requiring separate approval. You can withdraw before publication. Interested?
+> Would you opt in to a 30–45 minute My Guy routing exercise, plus setup time? You would choose three genuine tasks and observe how your coding agent chooses skills without and with My Guy. Both routes stop before doing the task. Do not send your prompts or session records to me; your coding host and model provider may still process them under your usual settings. I ask only for private, sanitized aggregate feedback. I plan to publish anonymous aggregate findings, with any quote requiring separate approval. You can withdraw before publication. Interested?
 
 Copy-ready screening reply:
 
@@ -17,7 +17,7 @@ Copy-ready screening reply:
 
 ## Consent and setup
 
-Before setup or recording, the organizer explains the two routes, private aggregate collection, planned anonymous publication, withdrawal before publication, and incident stop rule. Reply with explicit consent or decline. Do not use client or coworker material without permission. Keep raw tasks, code, transcripts, CLI reports, exact skill names, and private context on your own machine. Do not send them to the organizer.
+Before setup or recording, the organizer explains the two routes, private aggregate collection, planned anonymous publication, withdrawal before publication, and incident stop rule. Your coding host and model provider may process task text, context, and session data under their normal settings; check those settings before consenting. Reply with explicit consent or decline. Do not use client or coworker material without permission. Keep your copies of raw tasks, code, transcripts, CLI reports, exact skill names, and private context on your own machine. Do not send them to the organizer.
 
 **Wait for the coordinator-approved setup guide and release pin before installing.** The [agent install guide](AGENT_INSTALL.md) is the canonical setup reference once approved. Use disposable host profiles or homes and a clean project where needed. Ask your agent to assess suitability and propose exact changes first; approve each install, trust change, or overwrite before it happens. Installation alone does not make another skill trusted. If setup is difficult, tell the organizer and do not score a paired study.
 
@@ -52,7 +52,7 @@ Use the My Guy front door and `my-guy route --stdin --json` to help choose the s
 Keep one record per task and arm locally; do not send rows. Use anonymous task codes. Time the **routing phase from prompt submission to the first skill choice, clarification, or no-capability decision** with your own timer. Record setup time separately. For T1, T2, and T3, copy this compact row for each arm:
 
 ```text
-Task code / mode (observational or matched) / arm / order:
+Task code / mode (dry run, unscorable main pilot, or matched pair) / arm / order:
 Predeclared acceptable route(s), including clarify or no suitable capability:
 Observed choice, clarification, or no suitable capability:
 Source evidence cited and inspectable in this arm? What was it? (local only):
@@ -70,7 +70,10 @@ On a safety-stop suggestion, unauthorized action, or privacy breach, stop the af
 
 ## Private aggregate reply
 
-> Unscorable main-pilot tasks: [count]; of those, attempted matched pairs: [count]. Optional sanitized exclusion categories and counts: [summary or none]. Keep these separate from observational dry-run tasks; include no raw prompts or private names.
-> I completed [number] observational dry-run tasks; these are separate from [number] scorable matched pairs. The counts below include **matched pairs only**. Correct initial routes, including acceptable clarification or no-capability decisions: native [count / matched-arm decisions], My Guy [count / matched-arm decisions]. Inspectable source evidence for actionable routes: native [count / actionable routes], My Guy [count / actionable routes]. Average route time: native [time or N/A], My Guy [time or N/A]. Setup took [time] separately. Strict wrong actionable routes: native [count], My Guy [count]. Narrower safety-stop suggestions: native [count], My Guy [count]. Unauthorized actions: native [count], My Guy [count]. Privacy breaches: native [count], My Guy [count]. Observational dry-run notes, kept out of these counts: [sanitized summary or none]. Main friction: [sanitized summary]. I would [use / maybe use / not use] it again. I permit my anonymous aggregate counts in the planned publication: [yes / no]. I permit a sanitized quote only after reviewing its exact wording: [yes / no]. I can answer optional repeat-use checks after one week and four weeks: [yes / no]. I have contacted you privately about any safety event.
+> Attempts, kept in separate groups: observational dry-run tasks [count]; unscorable main-pilot tasks [count, including attempted pairs that failed verification]; scorable matched pairs [count]. For each group, completed arm decisions [native count / My Guy count] and observed decision types [selection / clarification / no capability, per arm]; missing or unavailable measurements [time / steps / tool calls / tokens: counts or N/A]. Sanitized exclusion or protocol-deviation categories and counts: [summary or none].
+>
+> For **scorable matched pairs only**: correct initial routes, including acceptable clarification or no-capability decisions: native [count / matched-arm decisions], My Guy [count / matched-arm decisions]. Inspectable source evidence for actionable routes: native [count / actionable routes], My Guy [count / actionable routes]. Average route time: native [time or N/A], My Guy [time or N/A]; average paired time difference where both times are available [time or N/A]. Setup took [time or N/A] separately.
+>
+> For **each of the three groups separately**, report strict wrong actionable routes, narrower safety-stop suggestions, unauthorized actions, and privacy breaches as four per-arm counts: [group: native counts; My Guy counts]. Include events from stopped or excluded attempts. Observational dry-run notes: [sanitized summary or none]. Main friction: [sanitized summary]. I would [use / maybe use / not use] it again. I permit my anonymous aggregate counts in the planned publication: [yes / no]. I permit a sanitized quote only after reviewing its exact wording: [yes / no]. I can answer optional repeat-use checks after one week and four weeks: [yes / no]. I have contacted you privately about any safety event.
 
 Send no raw prompts, CLI reports, transcripts, exact skill names, or client details. You may withdraw your unpublished data by contacting the organizer before publication.

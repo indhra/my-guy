@@ -110,10 +110,12 @@ separate per-arm counts. Faster runs never offset these outcomes.
 ## Privacy and stop rules
 
 Do not collect raw prompts, code, transcripts, credentials, private file paths,
-private skill names, or automatic telemetry. Participants keep raw work and
-task-level scorecard rows locally. Collect only participant-computed aggregate
-counts and timing summaries, plus sanitized comments they explicitly consent
-to share. Review every public issue or example for secrets, personal
+private skill names, or automatic telemetry. Participants keep their copies of
+raw work and task-level scorecard rows locally; their coding host and model
+provider may process session data under their normal settings, which must be
+disclosed before consent. Collect only participant-computed aggregate counts
+and timing summaries, plus sanitized comments they explicitly consent to share.
+Review every public issue or example for secrets, personal
 information, customer data, and identifying project details before submission.
 Use private security reporting for vulnerabilities, as described in
 [SECURITY.md](../SECURITY.md).
@@ -144,13 +146,17 @@ arm-order method, and these decisions in a dated local copy:
 
 Zero scorable matched pairs leaves the main-pilot route gate unmet and supports no superiority claim.
 
-Publish aggregate results for **all consenting** participants and tasks, including
-wins, misses, clarifications, no-capability cases, exclusions, withdrawal counts,
-deviations, setup burden, and unavailable measurements. Report per-arm counts
-of strict unsafe actionable results, pilot safety-stop suggestions,
-unauthorized actions, and privacy breaches separately, alongside route-phase
-distributions and paired differences for scorable matched pairs only. Keep
-observational dry-run results separate and full-task outcomes `N/A`. Suppress
+Publish aggregate dispositions for **all consenting, nonwithdrawn** attempts:
+separate observational dry-run tasks, unscorable main-pilot tasks (including
+failed pair verification), and scorable matched pairs. For each group, report
+completed arm decisions and observed selection, clarification, and no-capability
+counts; include sanitized exclusion and deviation counts, missing or unavailable
+measurements, and per-arm counts of strict unsafe actionable results, pilot
+safety-stop suggestions, unauthorized actions, and privacy breaches, including
+stopped or excluded attempts. The coordinator reports enrollment and withdrawal
+counts separately. Report per-arm correct routes and misses, route-quality counts,
+route-phase summaries, and paired differences for scorable matched pairs
+only. Report setup burden separately and full-task outcomes as `N/A`. Suppress
 public subgroup cells of fewer than five people; roll them
 into broader totals. Publish only explicitly consented, sanitized quotes.
 Any later task-completion study is separate and secondary. State the small sample, self-selected
