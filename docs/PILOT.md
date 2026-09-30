@@ -142,6 +142,8 @@ arm-order method, and these decisions in a dated local copy:
   and evidence gates pass, proceed only to a larger, pre-registered evaluation;
   do not claim superiority from this pilot.
 
+Zero scorable matched pairs leaves the main-pilot route gate unmet and supports no superiority claim.
+
 Publish aggregate results for **all consenting** participants and tasks, including
 wins, misses, clarifications, no-capability cases, exclusions, withdrawal counts,
 deviations, setup burden, and unavailable measurements. Report per-arm counts
