@@ -13,7 +13,7 @@ from pathlib import Path
 
 from .config import RouterConfig, SkillRoot
 from .models import Capability
-from .path_safety import unsafe_skill_file, unsafe_skill_root
+from .path_safety import has_symlink_component, unsafe_skill_file, unsafe_skill_root
 
 MAX_METADATA_BYTES = 1_048_576
 # This is an entry budget (files and directories), not a result budget.
@@ -331,6 +331,8 @@ def _plugin_roots(
     codex_plugins = _toml(home / ".codex" / "config.toml").get("plugins", {})
     if isinstance(codex_plugins, dict):
         cache = home / ".codex" / "plugins" / "cache"
+        if has_symlink_component(cache):
+            return tuple(result)
         for plugin_id, value in sorted(codex_plugins.items()):
             if not isinstance(plugin_id, str) or not isinstance(value, dict) or value.get("enabled") is not True:
                 continue
@@ -343,12 +345,30 @@ def _plugin_roots(
             version_root = cache / marketplace / plugin
             try:
                 cache_resolved = cache.resolve()
-                if version_root.is_symlink() or not version_root.is_dir() or not version_root.resolve().is_relative_to(cache_resolved):
+                if (
+                    has_symlink_component(version_root)
+                    or not version_root.is_dir()
+                    or not version_root.resolve().is_relative_to(cache_resolved)
+                ):
                     continue
-                versions = [
-                    path for path in version_root.iterdir()
-                    if path.is_dir() and not path.is_symlink() and path.resolve().is_relative_to(cache_resolved)
-                ]
+                versions = []
+                scanned_entries = 0
+                exhausted = False
+                with os.scandir(version_root) as entries:
+                    for entry in entries:
+                        scanned_entries += 1
+                        if scanned_entries > MAX_FILES_PER_ROOT:
+                            exhausted = True
+                            break
+                        if not entry.is_dir(follow_symlinks=False):
+                            continue
+                        version_path = version_root / entry.name
+                        if has_symlink_component(version_path):
+                            continue
+                        if version_path.resolve().is_relative_to(cache_resolved):
+                            versions.append(version_path)
+                if exhausted:
+                    continue
             except OSError:
                 continue
             # Natural version ordering (e.g. 1.10 before 1.9), stable on ties.

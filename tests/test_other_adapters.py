@@ -37,6 +37,20 @@ def test_openrouter_handoff_requires_host_mapping_and_never_invokes_adapter():
     assert calls == []
 
 
+def test_direct_openrouter_invocation_requires_host_mapping():
+    adapter = OpenRouterAdapter(frozenset({"/research"}))
+
+    with pytest.raises(HostMappingRequired, match="mapped to a supported agent host"):
+        adapter.invoke("/research", "Research this.")
+
+
+def test_direct_openrouter_invocation_still_checks_allowlist_first():
+    adapter = OpenRouterAdapter(frozenset())
+
+    with pytest.raises(PermissionError, match="does not allow this invocation"):
+        adapter.invoke("/research", "Research this.")
+
+
 def test_openrouter_host_mapping_refusal_preserves_approval_and_allowlist_gates():
     decision = RouteDecision("recommend", "Research.", ("research",), "source=matt", 0.9)
     capability = Capability("research", "matt", "Research", (), ("research",), "/research", "local")

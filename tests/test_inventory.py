@@ -276,3 +276,60 @@ def test_codex_plugin_cache_symlink_cannot_escape(tmp_path):
     _write(home / ".codex" / "config.toml", '[plugins."plugin@market"]\nenabled = true\n')
 
     assert discover_inventory(RouterConfig(), home=home, project=project) == ()
+
+
+def test_codex_plugin_cache_symlinked_ancestor_is_rejected(tmp_path):
+    home = tmp_path / "home"
+    project = tmp_path / "project"
+    outside = tmp_path / "outside-cache"
+    _write(
+        outside / "market" / "plugin" / "1.0" / "skills" / "escape" / "SKILL.md",
+        "---\nname: escape\ndescription: Escaped cache.\n---\n",
+    )
+    cache = home / ".codex" / "plugins" / "cache"
+    cache.parent.mkdir(parents=True)
+    cache.symlink_to(outside, target_is_directory=True)
+    _write(home / ".codex" / "config.toml", '[plugins."plugin@market"]\nenabled = true\n')
+
+    assert discover_inventory(RouterConfig(), home=home, project=project) == ()
+
+
+def test_codex_plugin_version_scan_budgets_all_entries_incrementally(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    project = tmp_path / "project"
+    version_root = home / ".codex" / "plugins" / "cache" / "market" / "plugin"
+    for version in ("1.9.0", "1.10.0"):
+        (version_root / version).mkdir(parents=True)
+    for index in range(20):
+        (version_root / f"irrelevant-{index:02}.bin").touch()
+    _write(home / ".codex" / "config.toml", '[plugins."plugin@market"]\nenabled = true\n')
+
+    budget = 5
+    consumed = 0
+    original_scandir = os.scandir
+
+    class CountingScandir:
+        def __init__(self, path):
+            self.iterator = original_scandir(path)
+
+        def __enter__(self):
+            self.iterator.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self.iterator.__exit__(*args)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            nonlocal consumed
+            entry = next(self.iterator)
+            consumed += 1
+            return entry
+
+    monkeypatch.setattr(inventory, "MAX_FILES_PER_ROOT", budget)
+    monkeypatch.setattr(inventory.os, "scandir", CountingScandir)
+
+    assert inventory._plugin_roots(home, project, RouterConfig()) == ()
+    assert consumed == budget + 1

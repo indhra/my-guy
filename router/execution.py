@@ -4,19 +4,11 @@ import json
 from typing import Protocol
 
 from .approval import ApprovalRequired
+from .errors import HostMappingRequired
 from .models import Capability, RouteDecision
 
 CANONICAL_HOSTS = frozenset({"codex", "claude", "opencode"})
 OPENROUTER_HOST = "openrouter"
-
-
-class HostMappingRequired(PermissionError):
-    """Raised when a handoff target has no mapping to a supported agent host."""
-
-    def __init__(self) -> None:
-        super().__init__(
-            "OpenRouter handoffs are disabled until mapped to a supported agent host."
-        )
 
 
 @dataclass(frozen=True)
