@@ -27,6 +27,10 @@ Plugin discovery is static and read-only. Claude Code plugin paths are constrain
 
 Legacy catalog rows migrate with unknown host scope (`hosts = NULL`), rather than being assumed to work on every host. A later successful inventory sync can replace that unknown value with observed host metadata.
 
+## Provider integrations and agent hosts
+
+OpenRouter is a provider gateway, not a supported local agent host. The published `v0.1.0` adapter rendered a provider handoff without making a network call. The post-release host-aware change deliberately disables that behavior until an operator explicitly maps the provider handoff to one of the supported agent hosts: Codex, Claude Code, or OpenCode. No mapping is implicit or configured by this change. An otherwise eligible, approved, and allowlisted but unmapped request raises `HostMappingRequired` with the message `OpenRouter handoffs are disabled until mapped to a supported agent host.` Unknown host scope (`null`) does not enable a handoff; it also reaches this refusal. Explicitly empty host scope is rejected earlier as unavailable. No handoff is rendered and no provider request is sent. Mapping must preserve host-availability, approval, and invocation checks.
+
 ## Approval model
 
 An approval binding covers the original decision, exact execution request, candidate set, reason, capability ID, and invocation. It prevents accidental replay onto a changed operation inside the trusted process. It is not cryptographic authorization against code that can import the library and mint its own binding; a remote service must add authenticated identity, durable audit, and server-held keys.

@@ -1,6 +1,9 @@
+import pytest
+
 from router.adapters.opencode import OpenCodeAdapter
 from router.adapters.openrouter import OpenRouterAdapter
-from router.execution import ApprovalToken, execute
+from router.approval import ApprovalRequired
+from router.execution import ApprovalToken, HostMappingRequired, execute
 from router.models import Capability, RouteDecision
 
 
@@ -16,10 +19,36 @@ def test_opencode_adapter_is_provider_shape_neutral():
     assert "configured OpenCode host" in result.instruction
 
 
-def test_openrouter_adapter_does_not_make_network_calls():
+def test_openrouter_handoff_requires_host_mapping_and_never_invokes_adapter():
     decision = RouteDecision("recommend", "Research.", ("research",), "source=matt", 0.9)
     capability = Capability("research", "matt", "Research", (), ("research",), "/research", "local")
-    result = execute(decision, capability, decision.request, ApprovalToken.for_execution(decision, capability, decision.request), OpenRouterAdapter(frozenset({"/research"})))
+    adapter = OpenRouterAdapter(frozenset({"/research"}))
+    calls = []
+    adapter.invoke = lambda *args: calls.append(args)
 
-    assert result.harness == "openrouter"
-    assert "configured OpenRouter host" in result.instruction
+    with pytest.raises(HostMappingRequired, match="mapped to a supported agent host"):
+        execute(
+            decision,
+            capability,
+            decision.request,
+            ApprovalToken.for_execution(decision, capability, decision.request),
+            adapter,
+        )
+    assert calls == []
+
+
+def test_openrouter_host_mapping_refusal_preserves_approval_and_allowlist_gates():
+    decision = RouteDecision("recommend", "Research.", ("research",), "source=matt", 0.9)
+    capability = Capability("research", "matt", "Research", (), ("research",), "/research", "local")
+    adapter = OpenRouterAdapter(frozenset())
+
+    with pytest.raises(ApprovalRequired):
+        execute(decision, capability, decision.request, None, adapter)
+    with pytest.raises(PermissionError, match="does not allow"):
+        execute(
+            decision,
+            capability,
+            decision.request,
+            ApprovalToken.for_execution(decision, capability, decision.request),
+            adapter,
+        )

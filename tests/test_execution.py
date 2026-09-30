@@ -103,3 +103,18 @@ def test_execution_binds_inventory_metadata_and_enforces_explicit_host():
             decision(), changed_host, "Review security.", approval,
             CodexAdapter(frozenset({"skill:security"})),
         )
+
+
+def test_canonical_host_adapter_works_with_explicit_matching_host():
+    from router.adapters.codex import CodexAdapter
+
+    capability = Capability(
+        "security", "codex:agent", "Security review", (), ("security",),
+        "skill:security", "local", kind="agent", hosts=("codex",),
+    )
+    adapter = CodexAdapter(frozenset({"skill:security"}))
+    approval = ApprovalToken.for_execution(decision(), capability, "Review security.")
+
+    result = execute(decision(), capability, "Review security.", approval, adapter)
+
+    assert result.harness == "codex"

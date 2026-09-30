@@ -7,6 +7,16 @@ from .approval import ApprovalRequired
 from .models import Capability, RouteDecision
 
 CANONICAL_HOSTS = frozenset({"codex", "claude", "opencode"})
+OPENROUTER_HOST = "openrouter"
+
+
+class HostMappingRequired(PermissionError):
+    """Raised when a handoff target has no mapping to a supported agent host."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "OpenRouter handoffs are disabled until mapped to a supported agent host."
+        )
 
 
 @dataclass(frozen=True)
@@ -65,7 +75,8 @@ def execute(
     # Harness-specific adapters require explicit host evidence. A generic
     # adapter with no declared harness remains host-neutral.
     adapter_host = getattr(adapter, "harness", None)
-    if adapter_host is not None:
+    openrouter_handoff = adapter_host == OPENROUTER_HOST
+    if adapter_host is not None and not openrouter_handoff:
         if adapter_host not in CANONICAL_HOSTS:
             raise PermissionError("adapter declares an unsupported host")
         if capability.hosts is None:
@@ -76,4 +87,6 @@ def execute(
         raise ApprovalRequired("matching explicit approval is required before execution")
     if capability.invocation not in adapter.allowed_invocations:
         raise PermissionError("adapter does not allow this invocation")
+    if openrouter_handoff:
+        raise HostMappingRequired()
     return adapter.invoke(capability.invocation, request)

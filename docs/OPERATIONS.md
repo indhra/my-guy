@@ -38,6 +38,10 @@ The inventory expansion is not included in published `v0.1.0`. In that work, con
 
 Claude Code plugin discovery follows enabled-install metadata only within managed plugin storage. It does not follow arbitrary absolute paths supplied by plugin manifests. Plugin inventory is a bounded static snapshot, not proof of effective runtime availability.
 
+## OpenRouter compatibility change
+
+OpenRouter is a provider gateway, not an agent host. Although published `v0.1.0` could render an OpenRouter handoff, the post-release host-aware behavior disables it until it is explicitly mapped to Codex, Claude Code, or OpenCode. Do not pass `openrouter` as a `--host` value or infer a mapping from capability metadata. After the normal trust, candidate, approval, and allowlist checks, an otherwise eligible OpenRouter adapter attempt with no mapping is refused with `HostMappingRequired` (`PermissionError`) and the message `OpenRouter handoffs are disabled until mapped to a supported agent host.` Unknown host scope (`null`) does not enable a handoff and receives this refusal; explicitly empty host scope is rejected earlier as unavailable. The adapter invocation is not called and no network request occurs. This change does not configure a mapping; any future mapping must retain the known-host, approval, and invocation-allowlist gates.
+
 ## State and recovery
 
 State defaults to `$XDG_CONFIG_HOME/my-guy` or `~/.config/my-guy`. `MY_GUY_HOME` selects an isolated state home for tests or a deliberate separate installation. It is not the host skills root. Preserve its ownership and private permissions.
