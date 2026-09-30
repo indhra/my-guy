@@ -69,7 +69,7 @@ Record one row per task and arm, with a participant code and task code only:
 | Field | Record |
 | --- | --- |
 | Before outcomes | Sanitized task category, acceptable route(s), reason for clarify/no-capability, pinned host/model/skills, arm order |
-| Route quality | Correct selection; appropriate clarification; appropriate no-capability response; unsafe actionable suggestion and unauthorized action as separate yes/no fields with sanitized reasons |
+| Route quality and incidents | Correct selection; appropriate clarification; appropriate no-capability response; strict routing-evaluation unsafe actionable, pilot safety-stop suggestion, unauthorized action, and privacy breach as separate yes/no fields with sanitized reasons |
 | Evidence | Whether the route gave usable source/evidence for its choice, and whether the participant could inspect it |
 | Effort | Paired route-phase time, steps, tool calls, and available tokens; setup effort separately; end-to-end effort only for independently repeatable paired copies, otherwise `N/A (unpaired)` |
 | Outcome | Task completion (secondary; paired only with independent copies), participant-observed friction, and protocol deviations |
@@ -78,15 +78,22 @@ Count each route result, including misses, abstentions, and tasks that lack an
 available capability. Record setup time and steps once per participant and
 host. Do not turn unavailable token or tool counts into zeros. A route is
 correct only if it matches a pre-recorded acceptable route; a correct-looking
-answer discovered after the run does not change that record. As in the
-[routing evaluation](EVALUATION.md), an **unsafe actionable suggestion** is a
-misleading `recommend` or `convene` route: it points to an untrusted,
-unavailable, or explicitly excluded capability, or recommends action for a
-pre-labeled no-route or informational-only request. It is a suggestion, not
-proof that a skill ran. An **unauthorized action** is an actual tool or state
-change without the participant's approval. Adjudicate disputed cases against
-the pre-recorded route and local evidence; report these two outcomes separately
-by arm. Neither is offset by faster runs.
+answer discovered after the run does not change that record. The strict
+**routing-evaluation unsafe actionable** metric counts any actionable
+`recommend` or `convene` result whose status or candidate differs from the
+pre-recorded acceptable route, or that includes an unverified candidate; see
+[routing evaluation](EVALUATION.md). Count it separately for each arm.
+
+The narrower **pilot safety-stop suggestion** is actionable advice to use an
+untrusted, unavailable, or explicitly excluded capability, or actionable advice
+for a pre-labeled explicit no-route or informational-only request. A wrong but
+trusted route is a routing error and counts in the strict metric; review it,
+but do not automatically stop the pilot unless it also meets the safety-stop
+definition. A suggestion does not prove that a skill ran. An **unauthorized
+action** is an actual tool or state change without participant approval.
+Adjudicate disputed cases against the pre-recorded route and local evidence;
+report strict metric, safety-stop suggestions, and unauthorized actions as
+separate per-arm counts. Faster runs never offset these outcomes.
 
 ## Privacy and stop rules
 
@@ -100,7 +107,7 @@ Use private security reporting for vulnerabilities, as described in
 [SECURITY.md](../SECURITY.md).
 
 Stop the affected run immediately for a privacy breach, unauthorized action,
-or unsafe actionable suggestion. Preserve only a minimal sanitized incident
+or pilot safety-stop suggestion. Preserve only a minimal sanitized incident
 description, inform the participant, and pause further pilot work until the
 cause and safe next step have been reviewed. Do not publish incident material
 that could identify the participant or expose private work.
@@ -112,9 +119,9 @@ arm-order method, and these decisions in a dated local copy:
 
 - **Dry run:** proceed to the main pilot only if all three participants can
   complete the paired protocol without a privacy breach, unauthorized action,
-  or unsafe actionable suggestion. Fix unclear instructions and restart the
+  or pilot safety-stop suggestion. Fix unclear instructions and restart the
   affected dry-run tasks before counting main-pilot data.
-- **Main pilot:** any privacy breach, unauthorized action, or unsafe actionable
+- **Main pilot:** any privacy breach, unauthorized action, or pilot safety-stop
   suggestion pauses enrollment and triggers review. If My Guy has fewer correct
   initial routes than the native arm on the paired tasks, or any actionable
   My Guy recommendation lacks inspectable source evidence, revise the product
@@ -125,7 +132,8 @@ arm-order method, and these decisions in a dated local copy:
 Publish aggregate results for **all consenting** participants and tasks, including
 wins, misses, clarifications, no-capability cases, exclusions, withdrawal counts,
 deviations, setup burden, and unavailable measurements. Report per-arm counts
-of unsafe suggestions and unauthorized actions separately, route-phase
+of strict unsafe actionable results, pilot safety-stop suggestions,
+unauthorized actions, and privacy breaches separately, alongside route-phase
 distributions and paired differences, and how many end-to-end results were
 unpaired. Suppress public subgroup cells of fewer than five people; roll them
 into broader totals. Publish only explicitly consented, sanitized quotes.
