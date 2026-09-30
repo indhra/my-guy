@@ -70,6 +70,58 @@ def test_does_not_claim_execution():
     assert decision.approval_required is True
 
 
+def test_requesting_host_prefers_native_capability_on_equal_evidence():
+    native = Capability(
+        "native-security", "codex", "Review security", (),
+        ("security", "review"), "agent:native-security", "local",
+        kind="agent", hosts=("codex",),
+    )
+    cross_host = Capability(
+        "claude-security", "claude", "Review security", (),
+        ("security", "review"), "/security", "local", hosts=("claude",),
+    )
+    decision = route("Review security", (cross_host, native), host="codex")
+    assert decision.status == "recommend"
+    assert decision.candidates == ("native-security",)
+    assert "Available in codex" in decision.reason
+
+
+def test_requesting_host_explains_cross_host_handoff():
+    claude_skill = Capability(
+        "claude-security", "claude", "Review security", (),
+        ("security", "review"), "/security", "local", hosts=("claude",),
+    )
+    decision = route("Review security", (claude_skill,), host="codex")
+    assert decision.status == "recommend"
+    assert decision.candidates == ("claude-security",)
+    assert "codex to claude" in decision.reason
+
+
+def test_host_specific_route_clarifies_unknown_availability():
+    unknown = Capability(
+        "unknown-host", "custom", "Review security", (),
+        ("review", "security"), "skill:unknown-host", "local", hosts=(),
+    )
+    decision = route("Review security", (unknown,), host="codex")
+    assert decision.status == "clarify"
+    assert "no known host availability" in decision.reason
+    assert decision.confidence == 0.0
+
+
+def test_requesting_host_does_not_bypass_unverified_tie_gate():
+    unverified = Capability(
+        "unverified", "outside", "Review security", (),
+        ("security", "review"), "/security", "unverified", hosts=("codex",),
+    )
+    local = Capability(
+        "local-security", "local", "Review security", (),
+        ("security", "review"), "/security", "local", hosts=("codex",),
+    )
+    decision = route("Review security", (local, unverified), host="codex")
+    assert decision.status == "clarify"
+    assert "unverified" in decision.reason.lower()
+
+
 def test_clarifies_when_only_weak_generic_language_matches():
     decision = route("Give me a design opinion.", CAPABILITIES)
 

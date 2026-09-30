@@ -16,6 +16,10 @@ class Capability:
     triggers: tuple[str, ...]
     invocation: str
     trust: str = "unverified"
+    kind: str = "skill"
+    # Empty means no host provenance has been recorded. Execution policy for
+    # legacy entries remains intentionally separate from inventory inference.
+    hosts: tuple[str, ...] = ()
 
     TRUST_LEVELS: ClassVar[frozenset[str]] = frozenset({"verified", "local", "unverified"})
 
@@ -32,6 +36,12 @@ class Capability:
             raise ValueError("capability triggers exceed safety limits")
         if self.trust not in self.TRUST_LEVELS:
             raise ValueError(f"unsupported trust level: {self.trust}")
+        if self.kind not in {"skill", "agent"}:
+            raise ValueError(f"unsupported capability kind: {self.kind}")
+        if not isinstance(self.hosts, tuple) or len(set(self.hosts)) != len(self.hosts) or any(
+            host not in {"codex", "claude", "opencode"} for host in self.hosts
+        ):
+            raise ValueError("capability hosts must be unique supported hosts")
         object.__setattr__(self, "triggers", tuple(trigger.lower() for trigger in self.triggers))
 
 

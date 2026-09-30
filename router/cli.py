@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sqlite3
 import sys
 from dataclasses import asdict, replace
@@ -12,8 +13,8 @@ from pathlib import Path
 
 from .catalog import CapabilityCatalog
 from .config import RouterConfig, SkillRoot, app_home, has_symlink_component, load_config, save_config
-from .core import route
-from .discovery import discover_named_roots, unsafe_skill_files
+from .core import TRUSTED_FOR_ROUTING, route
+from .discovery import discover_inventory, unsafe_skill_files
 from .feedback import FeedbackStore
 from .lifecycle import SUPPORTED_HARNESSES, SkillInstaller, standard_skill_roots
 from .path_safety import unsafe_skill_root
@@ -56,6 +57,34 @@ def _paths() -> tuple[Path, Path, Path]:
     return home / "config.json", home / "catalog.sqlite3", home / "feedback.sqlite3"
 
 
+def _load_doctor_config(config_path: Path) -> tuple[RouterConfig, list[dict[str, str]]]:
+    """Load the usable roots while retaining invalid roots for doctor diagnostics."""
+    raw = json.loads(config_path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("config must be a JSON object")
+    roots: list[SkillRoot] = []
+    invalid: list[dict[str, str]] = []
+    for item in raw.get("roots", ()):
+        try:
+            roots.append(SkillRoot(**item))
+        except (TypeError, ValueError) as error:
+            if not isinstance(item, dict):
+                raise
+            invalid.append({
+                "name": str(item.get("name", "unknown")),
+                "path": str(item.get("path", "")),
+                "trust": str(item.get("trust", "unverified")),
+                "reason": str(error),
+            })
+    config = RouterConfig(
+        enabled=raw.get("enabled", True),
+        feedback_enabled=raw.get("feedback_enabled", False),
+        roots=tuple(roots),
+        schema_version=raw.get("schema_version", 1),
+    )
+    return config, invalid
+
+
 def _state_home_issue(home: Path) -> str | None:
     if home.is_symlink():
         return "my-guy state directory must not be a symlink"
@@ -88,26 +117,77 @@ def _seed_capabilities():
 
 
 def _sync(config: RouterConfig, catalog: CapabilityCatalog) -> tuple[int, tuple[str, ...]]:
-    capabilities = (*_seed_capabilities(), *discover_named_roots(config.roots))
+    capabilities = (*_seed_capabilities(), *discover_inventory(config))
     stale = sync_capabilities(catalog, capabilities)
     return len(capabilities), stale
 
 
-def _decision_payload(decision, capabilities) -> dict:
+MAX_ROUTE_JSON_ENTRIES = 20
+
+
+def _decision_payload(decision, capabilities, host: str | None = None, *, include_all: bool = False) -> dict:
     by_id = {capability.id: capability for capability in capabilities}
-    return {
+    visible_candidates = decision.candidates if include_all else decision.candidates[:MAX_ROUTE_JSON_ENTRIES]
+    payload = {
         **asdict(decision),
+        "candidates": visible_candidates,
+        "candidate_total": len(decision.candidates),
+        "candidates_truncated": len(visible_candidates) < len(decision.candidates),
         "evidence": [
             {
                 "id": candidate,
                 "source": by_id[candidate].source,
                 "invocation": by_id[candidate].invocation,
                 "trust": by_id[candidate].trust,
+                "kind": by_id[candidate].kind,
+                "hosts": by_id[candidate].hosts,
             }
-            for candidate in decision.candidates
+            for candidate in visible_candidates
             if candidate in by_id
         ],
     }
+    if host is not None:
+        payload["requesting_host"] = host
+        tokens = set(re.findall(r"[a-z0-9]+", decision.request.lower()))
+        cross_host_matches = [
+            {
+                "id": capability.id,
+                "kind": capability.kind,
+                "source": capability.source,
+                "trust": capability.trust,
+                "hosts": capability.hosts,
+                "matched_triggers": sorted(tokens.intersection(capability.triggers)),
+                "actionable": bool(capability.hosts) and capability.trust in TRUSTED_FOR_ROUTING,
+                "availability": (
+                    "host_unknown" if not capability.hosts
+                    else "provenance_required" if capability.trust not in TRUSTED_FOR_ROUTING
+                    else "cross_host"
+                ),
+            }
+            for capability in capabilities
+            if host not in capability.hosts
+            and capability.id not in decision.candidates
+            and tokens.intersection(capability.triggers)
+        ]
+        cross_host_matches.sort(key=lambda match: (
+            not match["actionable"], -len(match["matched_triggers"]), match["id"]
+        ))
+        visible_cross_host_matches = cross_host_matches if include_all else cross_host_matches[:MAX_ROUTE_JSON_ENTRIES]
+        payload["cross_host_matches"] = visible_cross_host_matches
+        payload["cross_host_match_total"] = len(cross_host_matches)
+        payload["cross_host_matches_truncated"] = len(visible_cross_host_matches) < len(cross_host_matches)
+        if decision.status == "recommend" and len(decision.candidates) == 1:
+            capability = by_id.get(decision.candidates[0])
+            if capability and capability.hosts:
+                target_host = host if host in capability.hosts else capability.hosts[0]
+                payload["handoff"] = {
+                    "status": "prepared", "requesting_host": host, "target_host": target_host,
+                    "cross_host": target_host != host, "capability_id": capability.id,
+                    "kind": capability.kind, "source": capability.source,
+                    "invocation": capability.invocation, "request": decision.request,
+                    "approval_required": True,
+                }
+    return payload
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -119,6 +199,8 @@ def build_parser() -> argparse.ArgumentParser:
     route_parser.add_argument("request", nargs=argparse.REMAINDER)
     route_parser.add_argument("--json", action="store_true")
     route_parser.add_argument("--stdin", action="store_true", help="read request text from stdin")
+    route_parser.add_argument("--host", choices=("codex", "claude", "opencode"))
+    route_parser.add_argument("--all", action="store_true", help="include every match in JSON")
 
     sub.add_parser("sync", help="refresh the local capability directory")
     list_parser = sub.add_parser("list", help="list or search directory entries")
@@ -128,6 +210,8 @@ def build_parser() -> argparse.ArgumentParser:
     config_parser = sub.add_parser("config", help="show or modify local configuration")
     config_parser.add_argument("--feedback", choices=("on", "off"))
     config_parser.add_argument("--add-root", nargs=3, metavar=("NAME", "PATH", "TRUST"))
+    config_parser.add_argument("--hosts", help="comma-separated hosts for --add-root")
+    config_parser.add_argument("--add-agent-root", nargs=4, metavar=("NAME", "PATH", "TRUST", "HOST"))
 
     for action in ("install", "upgrade", "disable", "rollback", "uninstall", "status"):
         action_parser = sub.add_parser(action, help=f"{action} the portable front-door skill")
@@ -167,22 +251,48 @@ def _main(argv: list[str] | None = None) -> int:
     if args.command is None:
         parser.error("a command is required")
     config_path, catalog_path, feedback_path = _paths()
-    config = load_config(config_path)
+    invalid_roots: list[dict[str, str]] = []
+    try:
+        config = load_config(config_path)
+    except ValueError:
+        if args.command != "doctor" or not config_path.exists():
+            raise
+        config, invalid_roots = _load_doctor_config(config_path)
 
     if args.command == "config":
+        if args.add_root and args.add_agent_root:
+            raise ValueError("configure one root at a time")
+        if args.hosts and not args.add_root:
+            raise ValueError("--hosts requires --add-root")
         if args.feedback:
             config = replace(config, feedback_enabled=args.feedback == "on")
         if args.add_root:
             name, path, trust = args.add_root
             if trust == "local" and (reason := unsafe_skill_root(Path(path))):
                 raise PermissionError(f"trusted skill root is unsafe: {reason}")
-            root = SkillRoot(name, path, trust)
+            hosts = tuple(host.strip() for host in args.hosts.split(",")) if args.hosts else ()
+            if any(not host for host in hosts) or len(hosts) != len(set(hosts)) or any(
+                host not in {"codex", "claude", "opencode"} for host in hosts
+            ):
+                raise ValueError("--hosts must list unique codex, claude, or opencode hosts")
+            root = SkillRoot(name, path, trust, hosts=hosts)
             config = replace(config, roots=tuple(item for item in config.roots if item.name != name) + (root,))
-        if args.feedback or args.add_root:
+        if args.add_agent_root:
+            name, path, trust, host = args.add_agent_root
+            if host not in {"codex", "claude", "opencode"}:
+                raise ValueError("agent root host must be codex, claude, or opencode")
+            if trust == "local" and (reason := unsafe_skill_root(Path(path))):
+                raise PermissionError(f"trusted agent root is unsafe: {reason}")
+            root = SkillRoot(name, path, trust, kind="agent", hosts=(host,))
+            config = replace(config, roots=tuple(item for item in config.roots if item.name != name) + (root,))
+        if args.feedback or args.add_root or args.add_agent_root:
             _secure_state_home()
             save_config(config, config_path)
         print(json.dumps(asdict(config), indent=2))
         return 0
+
+    if args.command == "route" and args.all and not args.json:
+        raise ValueError("--all requires --json")
 
     if args.command == "status":
         status = SkillInstaller(app_home()).inspect(args.harness, args.root)
@@ -239,23 +349,44 @@ def _main(argv: list[str] | None = None) -> int:
     if args.command == "doctor":
         if bool(args.harness) != bool(args.root):
             raise ValueError("doctor requires both --harness and --root")
-        discovered = discover_named_roots(config.roots)
+        discovered = discover_inventory(config)
         trusted = [capability for capability in discovered if capability.trust == "local"]
         unsafe_roots = [(root, unsafe_skill_root(Path(root.path))) for root in config.roots
                         if root.trust == "local" and unsafe_skill_root(Path(root.path))]
         unsafe_files = [item for root in config.roots if root.trust == "local"
                         for item in unsafe_skill_files(Path(root.path))]
         state_issue = _state_home_issue(app_home())
+        root_rows = [
+            {"name": root.name, "path": root.path, "exists": Path(root.path).is_dir(),
+             "trust": root.trust, "safe": unsafe_skill_root(Path(root.path)) is None}
+            for root in config.roots
+        ]
+        root_rows.extend(
+            {"name": item["name"], "path": item["path"],
+             "exists": Path(item["path"]).is_dir(), "trust": item["trust"],
+             "safe": False, "reason": item["reason"]}
+            for item in invalid_roots
+        )
         checks = {
             "enabled": config.enabled,
             "config": str(config_path),
             "package_version": _package_version(),
             "catalog_parent_ready": _parent_ready(catalog_path),
             "state_home_safe": state_issue is None,
-            "roots": [{"name": root.name, "path": root.path, "exists": Path(root.path).is_dir(),
-                       "trust": root.trust, "safe": unsafe_skill_root(Path(root.path)) is None} for root in config.roots],
+            "roots": root_rows,
             "trusted_root_count": len({item.source.split(":", 1)[0] for item in trusted}),
             "trusted_capability_count": len(trusted),
+            "inventory": {
+                "total": len(discovered),
+                "by_kind": {
+                    kind: sum(capability.kind == kind for capability in discovered)
+                    for kind in ("skill", "agent")
+                },
+                "by_host": {
+                    host: sum(host in capability.hosts for capability in discovered)
+                    for host in ("codex", "claude", "opencode")
+                },
+            },
             "unsafe_trusted_skill_files": [
                 {"path": path, "reason": reason} for path, reason in unsafe_files
             ],
@@ -266,6 +397,11 @@ def _main(argv: list[str] | None = None) -> int:
         if args.harness:
             checks["installation"] = asdict(SkillInstaller(app_home()).inspect(args.harness, args.root))
         actions = []
+        if invalid_roots:
+            actions.extend(
+                f"Review unsafe configured root {root['name']}: {root['reason']}."
+                for root in invalid_roots
+            )
         if unsafe_roots:
             actions.extend(f"Review unsafe trusted root {root.name}: {reason}." for root, reason in unsafe_roots)
         if unsafe_files:
@@ -282,7 +418,7 @@ def _main(argv: list[str] | None = None) -> int:
             actions.append("Enable My Guy in local configuration.")
         checks["status"] = ("disabled" if not config.enabled else
                             "needs_installation" if args.harness and checks["installation"]["state"] != "ready" else
-                            "blocked" if state_issue or unsafe_roots or unsafe_files or not checks["catalog_parent_ready"] else
+                            "blocked" if state_issue or unsafe_roots or unsafe_files or invalid_roots or not checks["catalog_parent_ready"] else
                             "needs_capabilities" if not trusted else "ready")
         checks["summary"] = ("Ready to route reviewed capabilities." if checks["status"] == "ready" else
                              "My Guy needs setup before trusted routing is ready.")
@@ -322,13 +458,34 @@ def _main(argv: list[str] | None = None) -> int:
         if not request:
             print("a non-empty request is required", file=sys.stderr)
             return 2
-        decision = route(request, capabilities)
-        payload = _decision_payload(decision, capabilities)
+        decision = route(request, capabilities, host=args.host)
+        payload = _decision_payload(decision, capabilities, args.host, include_all=args.all or not args.json)
         if args.json:
             print(json.dumps(payload, indent=2))
         else:
             print(f"{decision.status.upper()} ({decision.confidence:.2f})")
-            print(decision.reason)
+            evidence = payload["evidence"]
+            limit = 10
+            if len(evidence) > limit:
+                print(f"{len(evidence)} candidates matched; showing the first {limit}. Use --json for the full result.")
+            else:
+                print(decision.reason)
+            for item in evidence[:limit]:
+                print(
+                    f"- {item['id']} [{item['kind']}, {item['trust']}] via "
+                    f"{item['invocation']} ({item['source']}; hosts={','.join(item['hosts'])})"
+                )
+            if "handoff" in payload:
+                handoff = payload["handoff"]
+                print(f"Prepared handoff: {handoff['requesting_host']} -> {handoff['target_host']} (approval required)")
+            cross_host_matches = payload.get("cross_host_matches", ())
+            for match in cross_host_matches[:3]:
+                print(
+                    f"Cross-host match: {match['id']} [{match['trust']}; {match['availability']}] "
+                    f"on {','.join(match['hosts']) or 'unknown host'}"
+                )
+            if len(cross_host_matches) > 3:
+                print(f"{len(cross_host_matches) - 3} more cross-host matches; use --json for the full list.")
             for evidence in payload["evidence"]:
                 print(f"- {evidence['id']} [{evidence['trust']}] via {evidence['invocation']} ({evidence['source']})")
         return 0

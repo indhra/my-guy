@@ -134,3 +134,14 @@ def _keywords(text: str) -> list[str]:
     stopwords = {"a", "an", "and", "for", "from", "in", "of", "the", "to", "use", "when"}
     words = re.findall(r"[a-z0-9]+", text.lower())
     return list(dict.fromkeys(word for word in words if len(word) > 3 and word not in stopwords))
+
+
+def discover_inventory(config, *, home: Path | None = None, project: Path | None = None) -> tuple[Capability, ...]:
+    """Discover configured and host-local inventory through the bounded scanner.
+
+    Imported lazily because inventory metadata parsing reuses the skill frontmatter
+    helpers in this module.
+    """
+    from .inventory import discover_inventory as _discover_inventory
+
+    return _discover_inventory(config, home=home, project=project)

@@ -112,7 +112,8 @@ def test_trusted_symlink_root_does_not_become_routable(tmp_path):
     skill.write_text("---\nname: review\ndescription: Review security.\n---\n")
     linked = tmp_path / "linked"
     linked.symlink_to(real, target_is_directory=True)
-    assert discover_named_roots((SkillRoot("linked", str(linked), "local"),)) == ()
+    with pytest.raises(ValueError, match="symlink"):
+        SkillRoot("linked", str(linked), "local")
 
 
 def test_shared_writable_trusted_root_does_not_become_routable(tmp_path):

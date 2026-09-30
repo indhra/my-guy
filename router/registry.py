@@ -15,6 +15,8 @@ def load_registry(path: str | Path) -> tuple[Capability, ...]:
             triggers=tuple(record["triggers"]),
             invocation=record["invocation"],
             trust=record.get("trust", "unverified"),
+            kind=record.get("kind", "skill"),
+            hosts=tuple(record.get("hosts", ())),
         )
         for record in records
     )

@@ -48,3 +48,26 @@ def test_execution_rejects_unverified_and_unallowlisted_capabilities():
     unsupported = Capability("other", "ecc", "Other", (), ("security",), "skill:other", "local")
     with pytest.raises(PermissionError):
         execute(decision(), unsupported, "Review security.", ApprovalToken.for_execution(decision(), unsupported, "Review security."), adapter)
+
+
+def test_execution_binds_inventory_metadata_and_enforces_explicit_host():
+    from router.adapters.codex import CodexAdapter
+
+    capability = Capability(
+        "security", "codex:agent", "Security review", (), ("security",),
+        "skill:security", "local", kind="agent", hosts=("claude",),
+    )
+    adapter = CodexAdapter(frozenset({"skill:security"}))
+    approval = ApprovalToken.for_execution(decision(), capability, "Review security.")
+    with pytest.raises(PermissionError, match="adapter host"):
+        execute(decision(), capability, "Review security.", approval, adapter)
+
+    changed_host = Capability(
+        "security", "codex:agent", "Security review", (), ("security",),
+        "skill:security", "local", kind="agent", hosts=("codex",),
+    )
+    with pytest.raises(ApprovalRequired):
+        execute(
+            decision(), changed_host, "Review security.", approval,
+            CodexAdapter(frozenset({"skill:security"})),
+        )

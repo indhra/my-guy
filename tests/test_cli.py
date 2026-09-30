@@ -270,6 +270,74 @@ def test_status_and_doctor_report_mutable_installed_skill(monkeypatch, tmp_path,
     assert doctor["status"] != "ready"
 
 
+def test_route_prepares_approval_gated_cross_host_handoff(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    skills = tmp_path / ".claude" / "skills"
+    monkeypatch.setattr("router.cli._seed_capabilities", lambda: ())
+    skill = skills / "threat-review" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("---\nname: threat-review\ndescription: Review security threats.\n---\n")
+
+    assert main(["config", "--add-root", "claude", str(skills), "local", "--hosts", "claude"]) == 0
+    capsys.readouterr()
+    assert main(["route", "--host", "codex", "--json", "Review", "security", "threats"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "recommend"
+    assert payload["handoff"]["requesting_host"] == "codex"
+    assert payload["handoff"]["target_host"] == "claude"
+    assert payload["handoff"]["cross_host"] is True
+    assert payload["handoff"]["approval_required"] is True
+    assert payload["evidence"][0]["hosts"] == ["claude"]
+
+
+def test_config_persists_explicit_hosts_for_skill_and_agent_roots(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    assert main(["config", "--add-root", "skills", str(tmp_path / "skills"), "local",
+                 "--hosts", "codex,claude"]) == 0
+    capsys.readouterr()
+    assert main(["config", "--add-agent-root", "agents", str(tmp_path / "agents"), "local", "opencode"]) == 0
+    roots = {root["name"]: root for root in json.loads(capsys.readouterr().out)["roots"]}
+    assert roots["skills"]["kind"] == "skill"
+    assert roots["skills"]["hosts"] == ["codex", "claude"]
+    assert roots["agents"]["kind"] == "agent"
+    assert roots["agents"]["hosts"] == ["opencode"]
+
+
+def test_route_json_bounds_candidates_and_all_opts_in(monkeypatch, tmp_path, capsys):
+    from router.models import Capability
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+    capabilities = tuple(
+        Capability(
+            f"cap-{index:03}", "fixture", "Review security", (),
+            ("review", "security"), f"skill:cap-{index:03}", "local",
+        )
+        for index in range(30)
+    )
+    monkeypatch.setattr("router.cli._seed_capabilities", lambda: ())
+    monkeypatch.setattr("router.cli.discover_inventory", lambda config: capabilities)
+
+    assert main(["route", "--json", "Review", "security"]) == 0
+    bounded = json.loads(capsys.readouterr().out)
+    assert bounded["candidate_total"] == 30
+    assert bounded["candidates_truncated"] is True
+    assert len(bounded["candidates"]) == 20
+    assert len(bounded["evidence"]) == 20
+
+    assert main(["route", "--json", "--all", "Review", "security"]) == 0
+    full = json.loads(capsys.readouterr().out)
+    assert full["candidates_truncated"] is False
+    assert len(full["candidates"]) == 30
+
+
+def test_route_all_requires_json(capsys):
+    assert main(["route", "--all", "Review", "security"]) == 2
+    assert "--all requires --json" in capsys.readouterr().err
+
+
 def test_doctor_private_state_rule_matches_route(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv("HOME", str(tmp_path))
     state = tmp_path / "state"
