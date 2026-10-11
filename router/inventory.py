@@ -6,7 +6,6 @@ import json
 import os
 import re
 import tomllib
-from collections import Counter
 from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
@@ -170,16 +169,11 @@ def _keywords(text: str) -> tuple[str, ...]:
 def _agents(name: str, root: Path, host: str, trust: str = "unverified") -> tuple[Capability, ...]:
     if unsafe_skill_root(root):
         return ()
-    files = _files(root, {".md", ".toml"})
-    toml_stems = {path.stem for path in files if path.suffix.lower() == ".toml"}
-    counts: Counter[str] = Counter()
-    found: list[Capability] = []
-    for path in files:
+    parsed: list[tuple[Path, str, str]] = []
+    for path in _files(root, {".md", ".toml"}):
         if unsafe_skill_file(path):
             continue
         if path.name == "AGENTS.md" or path.name.endswith(".compact.md"):
-            continue
-        if path.suffix.lower() == ".md" and path.stem in toml_stems:
             continue
         if path.suffix.lower() == ".toml":
             metadata = _toml(path)
@@ -193,9 +187,22 @@ def _agents(name: str, root: Path, host: str, trust: str = "unverified") -> tupl
             agent_name = agent_name or path.stem
         if not isinstance(agent_name, str) or not isinstance(description, str) or not description.strip():
             continue
-        agent_name, description = agent_name.strip(), description.strip()
-        counts[agent_name] += 1
-        suffix = "" if counts[agent_name] == 1 else ":" + sha256(str(path).encode()).hexdigest()[:10]
+        parsed.append((path, agent_name.strip(), description.strip()))
+
+    # A Markdown file is only a companion of a usable TOML agent in the same
+    # directory; namesakes elsewhere are independent agents.
+    toml_companions = {
+        (path.parent, path.stem) for path, _, _ in parsed if path.suffix.lower() == ".toml"
+    }
+    found: list[Capability] = []
+    for path, agent_name, description in parsed:
+        if path.suffix.lower() == ".md" and (path.parent, path.stem) in toml_companions:
+            continue
+        # Only the canonical top-level file named after the agent gets the bare
+        # ID; every other file gets a path-derived suffix so IDs stay stable
+        # when namesakes appear or disappear.
+        canonical = path.parent == root and path.stem == agent_name
+        suffix = "" if canonical else ":" + sha256(str(path).encode()).hexdigest()[:10]
         try:
             found.append(Capability(
                 id=f"{name}:{agent_name}{suffix}",
@@ -213,6 +220,11 @@ def _agents(name: str, root: Path, host: str, trust: str = "unverified") -> tupl
     return tuple(found)
 
 
+def _opencode_config_dir(home: Path) -> Path:
+    """Match the XDG rule used by default_roots for OpenCode's config."""
+    return Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config") / "opencode"
+
+
 def _skill_hosts(
     root: SkillRoot, *, home: Path, project: Path
 ) -> tuple[str, ...] | None:
@@ -224,7 +236,7 @@ def _skill_hosts(
         (project / ".codex" / "skills").resolve(): ("codex",),
         (home / ".claude" / "skills").resolve(): ("claude",),
         (project / ".claude" / "skills").resolve(): ("claude",),
-        (home / ".config" / "opencode" / "skills").resolve(): ("opencode",),
+        (_opencode_config_dir(home) / "skills").resolve(): ("opencode",),
         (project / ".opencode" / "skills").resolve(): ("opencode",),
     }
     return canonical_roots.get(Path(root.path).resolve())
@@ -232,8 +244,8 @@ def _skill_hosts(
 
 def _opencode_config_agents(home: Path, project: Path) -> tuple[Capability, ...]:
     paths = (
-        home / ".config" / "opencode" / "opencode.jsonc",
-        home / ".config" / "opencode" / "opencode.json",
+        _opencode_config_dir(home) / "opencode.jsonc",
+        _opencode_config_dir(home) / "opencode.json",
         project / "opencode.jsonc",
         project / "opencode.json",
         project / ".opencode" / "opencode.jsonc",
@@ -410,7 +422,7 @@ def discover_inventory(
     agent_roots = (
         ("codex-agent", home / ".codex" / "agents", "codex"),
         ("claude-agent", home / ".claude" / "agents", "claude"),
-        ("opencode-agent", home / ".config" / "opencode" / "agents", "opencode"),
+        ("opencode-agent", _opencode_config_dir(home) / "agents", "opencode"),
         ("project-codex-agent", project / ".codex" / "agents", "codex"),
         ("project-claude-agent", project / ".claude" / "agents", "claude"),
         ("project-opencode-agent", project / ".opencode" / "agents", "opencode"),

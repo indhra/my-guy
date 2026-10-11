@@ -116,15 +116,18 @@ def route(
             confidence=0.0,
         )
     scored = trusted
-    # A host-specific request can prefer a native route among equally strong
-    # matches. If availability is unknown for every top match, clarify rather
-    # than inferring that a legacy capability belongs to this host.
+    best_score = scored[0][0]
+    top = [item for item in scored if item[0] == best_score]
+    unknown = [item for item in top if item[1].hosts is None]
+    available = [item for item in top if item[1].hosts]
+    # A host-specific request prefers a native route among equally strong
+    # matches. Unknown availability blocks only non-native fallbacks, since a
+    # legacy capability must not be inferred to belong to this host.
     if host is not None:
-        best_score = scored[0][0]
-        top = [item for item in scored if item[0] == best_score]
-        unknown = [item for item in top if item[1].hosts is None]
-        known = [item for item in top if item[1].hosts is not None]
-        if unknown:
+        native = [item for item in available if host in item[1].hosts]
+        if native:
+            selected = native
+        elif unknown:
             return RouteDecision(
                 status="clarify",
                 request=request,
@@ -135,35 +138,20 @@ def route(
                 ),
                 confidence=0.0,
             )
-        if not known:
-            return RouteDecision(
-                status="clarify",
-                request=request,
-                candidates=tuple(item[1].id for item in top),
-                reason="Matching capabilities have unknown host availability; rediscover or configure hosts before routing.",
-                confidence=0.0,
-            )
-        available = [item for item in known if item[1].hosts]
-        native = [item for item in available if host in item[1].hosts]
-        selected = native or available
-        if not selected:
-            if unknown:
-                return RouteDecision(
-                    status="clarify",
-                    request=request,
-                    candidates=tuple(item[1].id for item in unknown),
-                    reason="Matching capabilities have unknown host availability; rediscover or configure hosts before routing.",
-                    confidence=0.0,
-                )
-            return RouteDecision(
-                status="clarify",
-                request=request,
-                candidates=tuple(item[1].id for item in known),
-                reason="Matching capabilities are explicitly unavailable on every supported host.",
-                confidence=0.0,
-            )
+        else:
+            selected = available
     else:
-        selected = [item for item in scored if item[0] == scored[0][0]]
+        # Unknown host scope stays routable without a host; an explicitly empty
+        # host tuple is unusable everywhere.
+        selected = [item for item in top if item[1].hosts != ()]
+    if not selected:
+        return RouteDecision(
+            status="clarify",
+            request=request,
+            candidates=tuple(item[1].id for item in top),
+            reason="Matching capabilities are explicitly unavailable on every supported host.",
+            confidence=0.0,
+        )
     if len(selected) == 1:
         score, capability, matched, matched_phrases = selected[0]
         confidence = min(0.95, 0.45 + (0.15 * score))

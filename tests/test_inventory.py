@@ -243,7 +243,8 @@ def test_explicit_empty_hosts_disable_canonical_root_inference(tmp_path):
     assert items[0].hosts == ()
 
 
-def test_opencode_jsonc_agent_is_static_and_project_config_wins(tmp_path):
+def test_opencode_jsonc_agent_is_static_and_project_config_wins(tmp_path, monkeypatch):
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
     home = tmp_path / "home"
     project = tmp_path / "project"
     _write(
@@ -333,3 +334,53 @@ def test_codex_plugin_version_scan_budgets_all_entries_incrementally(tmp_path, m
 
     assert inventory._plugin_roots(home, project, RouterConfig()) == ()
     assert consumed == budget + 1
+
+
+def test_agent_namesakes_in_different_directories_are_both_inventoried(tmp_path):
+    root = tmp_path / "agents"
+    _write(root / "team-a" / "reviewer.toml", 'name = "reviewer"\ndescription = "Team A review."\n')
+    _write(root / "team-b" / "reviewer.md", "---\nname: reviewer\ndescription: Team B review.\n---\n")
+
+    items = inventory._agents("agents", root, "codex")
+
+    assert sorted(item.description for item in items) == ["Team A review.", "Team B review."]
+
+
+def test_invalid_toml_does_not_hide_markdown_companion(tmp_path):
+    root = tmp_path / "agents"
+    _write(root / "reviewer.toml", 'name = "reviewer"\n')
+    _write(root / "reviewer.md", "---\nname: reviewer\ndescription: Markdown review.\n---\n")
+
+    items = inventory._agents("agents", root, "codex")
+
+    assert [(item.id, item.description) for item in items] == [("agents:reviewer", "Markdown review.")]
+
+
+def test_agent_ids_survive_namesake_deletion(tmp_path):
+    root = tmp_path / "agents"
+    _write(root / "a" / "reviewer.md", "---\nname: reviewer\ndescription: A review.\n---\n")
+    _write(root / "b" / "reviewer.md", "---\nname: reviewer\ndescription: B review.\n---\n")
+    _write(root / "planner.md", "---\nname: planner\ndescription: Plan work.\n---\n")
+
+    before = {item.description: item.id for item in inventory._agents("agents", root, "codex")}
+    (root / "a" / "reviewer.md").unlink()
+    after = {item.description: item.id for item in inventory._agents("agents", root, "codex")}
+
+    assert before["Plan work."] == "agents:planner"
+    assert before["A review."] != before["B review."]
+    assert after == {"B review.": before["B review."], "Plan work.": "agents:planner"}
+
+
+def test_opencode_agents_follow_xdg_config_home(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    project = tmp_path / "project"
+    xdg = tmp_path / "xdg"
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(xdg))
+    _write(xdg / "opencode" / "opencode.jsonc", '{"agent":{"planner":{"description":"XDG planner"}}}')
+    _write(xdg / "opencode" / "agents" / "builder.md", "---\nname: builder\ndescription: Build.\n---\n")
+    _write(home / ".config" / "opencode" / "opencode.jsonc", '{"agent":{"ignored":{"description":"Wrong"}}}')
+
+    items = discover_inventory(RouterConfig(), home=home, project=project)
+
+    assert sorted(item.invocation for item in items) == ["agent:builder", "agent:planner"]
+    assert all(item.hosts == ("opencode",) for item in items)

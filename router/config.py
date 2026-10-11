@@ -77,32 +77,23 @@ def default_roots(home: Path | None = None, project: Path | None = None) -> tupl
     home = home or Path.home()
     project = project or Path.cwd()
     config_home = Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config")
-    candidates = (
-        SkillRoot(
-            "agents", str(home / ".agents" / "skills"),
-            hosts=None,
-        ),
-        SkillRoot("codex", str(home / ".codex" / "skills"), hosts=("codex",)),
-        SkillRoot("claude", str(home / ".claude" / "skills"), hosts=("claude",)),
-        SkillRoot(
-            "opencode", str(config_home / "opencode" / "skills"), hosts=("opencode",)
-        ),
-        SkillRoot(
-            "project-agents", str(project / ".agents" / "skills"),
-            hosts=None,
-        ),
-        SkillRoot(
-            "project-codex", str(project / ".codex" / "skills"), hosts=("codex",)
-        ),
-        SkillRoot(
-            "project-claude", str(project / ".claude" / "skills"), hosts=("claude",)
-        ),
-        SkillRoot(
-            "project-opencode", str(project / ".opencode" / "skills"),
-            hosts=("opencode",),
-        ),
+    candidates: tuple[tuple[str, Path, tuple[str, ...] | None], ...] = (
+        ("agents", home / ".agents" / "skills", None),
+        ("codex", home / ".codex" / "skills", ("codex",)),
+        ("claude", home / ".claude" / "skills", ("claude",)),
+        ("opencode", config_home / "opencode" / "skills", ("opencode",)),
+        ("project-agents", project / ".agents" / "skills", None),
+        ("project-codex", project / ".codex" / "skills", ("codex",)),
+        ("project-claude", project / ".claude" / "skills", ("claude",)),
+        ("project-opencode", project / ".opencode" / "skills", ("opencode",)),
     )
-    return tuple(root for root in candidates if Path(root.path).is_dir())
+    # Skip symlinked defaults instead of failing config loading; explicitly
+    # configured symlinked roots are still rejected by SkillRoot.
+    return tuple(
+        SkillRoot(name, str(path), hosts=hosts)
+        for name, path, hosts in candidates
+        if path.is_dir() and not has_symlink_component(path)
+    )
 
 
 def load_config(path: Path | None = None) -> RouterConfig:

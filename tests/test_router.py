@@ -405,3 +405,36 @@ def test_scope_exclusion_does_not_require_sentence_final_position(query, expecte
     decision = route(query, CAPABILITIES)
     assert decision.status == expected_status
     assert decision.candidates == expected_candidates
+
+
+def test_native_match_wins_over_tied_unknown_host_candidate():
+    native = Capability(
+        "native", "codex", "Review security", (),
+        ("security", "review"), "skill:native", "local", hosts=("codex",),
+    )
+    legacy = Capability(
+        "legacy", "shared", "Review security", (),
+        ("security", "review"), "skill:legacy", "local", hosts=None,
+    )
+    decision = route("Review security", (legacy, native), host="codex")
+    assert decision.status == "recommend"
+    assert decision.candidates == ("native",)
+
+
+def test_host_neutral_route_skips_explicitly_unavailable_capability():
+    unavailable = Capability(
+        "unavailable", "custom", "Review security", (),
+        ("security", "review"), "skill:unavailable", "local", hosts=(),
+    )
+    decision = route("Review security", (unavailable,))
+    assert decision.status == "clarify"
+    assert decision.candidates == ("unavailable",)
+    assert "explicitly unavailable" in decision.reason
+
+    available = Capability(
+        "available", "custom", "Review security", (),
+        ("security", "review"), "skill:available", "local", hosts=("codex",),
+    )
+    decision = route("Review security", (unavailable, available))
+    assert decision.status == "recommend"
+    assert decision.candidates == ("available",)

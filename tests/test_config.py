@@ -113,3 +113,16 @@ def test_config_rejects_duplicate_or_invalid_roots():
         RouterConfig(roots=(SkillRoot("same", "/one"), SkillRoot("same", "/two")))
     with pytest.raises(ValueError):
         SkillRoot("relative", "skills")
+
+
+def test_symlinked_default_root_is_skipped_not_fatal(monkeypatch, tmp_path):
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    real = tmp_path / "elsewhere"
+    real.mkdir()
+    (tmp_path / ".claude").mkdir()
+    (tmp_path / ".claude" / "skills").symlink_to(real, target_is_directory=True)
+    (tmp_path / ".codex" / "skills").mkdir(parents=True)
+
+    roots = default_roots(home=tmp_path, project=tmp_path / "project")
+
+    assert [root.name for root in roots] == ["codex"]
