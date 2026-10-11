@@ -541,3 +541,24 @@ def test_cli_sync_json_and_feedback_gate(monkeypatch, tmp_path, capsys):
 
     assert main(["feedback", "security-review", "accepted", "private", "request"]) == 2
     assert "opts in" in capsys.readouterr().err
+
+
+def test_route_warns_when_trailing_options_become_request_text(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+
+    assert main(["route", "Review", "security", "--host", "codex"]) == 0
+
+    captured = capsys.readouterr()
+    assert "--host" in captured.err
+    assert "request text" in captured.err
+
+
+def test_feedback_warns_when_trailing_options_become_request_text(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("MY_GUY_HOME", str(tmp_path / "home"))
+
+    main(["feedback", "skill:review", "accepted", "great", "--correction", "later"])
+
+    captured = capsys.readouterr()
+    assert "--correction was parsed as request text" in captured.err

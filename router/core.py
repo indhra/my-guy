@@ -5,6 +5,7 @@ from typing import NamedTuple
 from .models import Capability, RouteDecision
 from .query import exclusion_tokens, explicit_abstention, matched_aliases, routing_spans, uncertain_exclusion
 
+MAX_REASON_CANDIDATES = 20
 MIN_RECOMMEND_CONFIDENCE = 0.7
 TRUSTED_FOR_ROUTING = frozenset({"verified", "local"})
 
@@ -185,8 +186,11 @@ def route(
 
     candidate_ids = tuple(item[1].id for item in selected)
     evidence = "; ".join(
-        f"{item[1].id} (source={item[1].source}): {_evidence(item[2], item[3])}" for item in selected
+        f"{item[1].id} (source={item[1].source}): {_evidence(item[2], item[3])}"
+        for item in selected[:MAX_REASON_CANDIDATES]
     )
+    if len(selected) > MAX_REASON_CANDIDATES:
+        evidence += f"; ... and {len(selected) - MAX_REASON_CANDIDATES} more"
     return RouteDecision(
         status="convene",
         request=request,

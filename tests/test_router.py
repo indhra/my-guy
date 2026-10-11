@@ -438,3 +438,19 @@ def test_host_neutral_route_skips_explicitly_unavailable_capability():
     decision = route("Review security", (unavailable, available))
     assert decision.status == "recommend"
     assert decision.candidates == ("available",)
+
+
+def test_convene_reason_is_bounded_for_large_tie_sets():
+    capabilities = tuple(
+        Capability(
+            f"cap-{index:03d}", "fixture", "Review security", (),
+            ("review", "security"), f"skill:{index}", "local",
+        )
+        for index in range(25)
+    )
+    decision = route("Review security", capabilities)
+    assert decision.status == "convene"
+    assert decision.candidates == tuple(f"cap-{index:03d}" for index in range(25))
+    assert len(decision.candidates) == 25
+    assert "cap-024" not in decision.reason
+    assert "and 5 more" in decision.reason

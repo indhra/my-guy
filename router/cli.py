@@ -122,6 +122,18 @@ def _sync(config: RouterConfig, catalog: CapabilityCatalog) -> tuple[int, tuple[
 
 
 MAX_ROUTE_JSON_ENTRIES = 20
+_ROUTE_OPTION_NAMES = frozenset({"--json", "--stdin", "--all", "--host", "--version"})
+_FEEDBACK_OPTION_NAMES = frozenset({"--correction"})
+
+
+def _warn_stray_options(tokens, options) -> None:
+    stray = [token for token in tokens if token.split("=", 1)[0] in options]
+    if stray:
+        print(
+            f"my-guy: {' '.join(stray)} was parsed as request text; "
+            "options must precede the positional arguments",
+            file=sys.stderr,
+        )
 
 
 def _decision_payload(decision, capabilities, host: str | None = None, *, include_all: bool = False) -> dict:
@@ -337,6 +349,7 @@ def _main(argv: list[str] | None = None) -> int:
 
     if args.command == "feedback":
         _secure_state_home()
+        _warn_stray_options(args.request, _FEEDBACK_OPTION_NAMES)
         request = " ".join(args.request).strip()
         store = FeedbackStore(feedback_path)
         try:
@@ -466,6 +479,7 @@ def _main(argv: list[str] | None = None) -> int:
             return 0
         if args.stdin and args.request:
             raise ValueError("--stdin cannot be combined with a positional request")
+        _warn_stray_options(args.request, _ROUTE_OPTION_NAMES)
         raw_request = (sys.stdin.read(MAX_REQUEST_LENGTH + 1) if args.stdin else
                        " ".join(args.request).removeprefix("-- "))
         if len(raw_request) > MAX_REQUEST_LENGTH:
