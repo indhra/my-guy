@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from ..errors import HostMappingRequired
+
 
 @dataclass(frozen=True)
 class OpenRouterHandoff:
@@ -10,7 +12,7 @@ class OpenRouterHandoff:
 
 
 class OpenRouterAdapter:
-    """Render a provider-neutral OpenRouter handoff; performs no network call."""
+    """Disabled provider-neutral adapter pending supported-host mapping."""
 
     harness = "openrouter"
 
@@ -20,9 +22,4 @@ class OpenRouterAdapter:
     def invoke(self, invocation: str, request: str) -> OpenRouterHandoff:
         if invocation not in self.allowed_invocations:
             raise PermissionError("OpenRouter adapter does not allow this invocation")
-        return OpenRouterHandoff(
-            self.harness,
-            invocation,
-            request,
-            f"Send the approved request to the configured OpenRouter host using `{invocation}`; preserve evidence and uncertainty.",
-        )
+        raise HostMappingRequired()

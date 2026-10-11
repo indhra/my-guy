@@ -1,4 +1,5 @@
 import re
+import os
 import stat
 from collections import Counter
 from hashlib import sha256
@@ -10,7 +11,46 @@ from .models import Capability
 
 
 MAX_SKILL_BYTES = 1_048_576
+# Legacy name retained; this is a total filesystem-entry budget per root.
 MAX_SKILLS_PER_ROOT = 10_000
+
+
+def _bounded_skill_paths(root: Path) -> tuple[tuple[Path, ...], str | None]:
+    """Collect skill paths while bounding every visited filesystem entry.
+
+    Files, directories, and symlinks all consume budget. An over-budget or
+    incomplete walk discards the root, avoiding enumeration-order-dependent
+    partial results.
+    """
+    if has_symlink_component(root) or not root.is_dir():
+        return (), None
+
+    pending = [root]
+    skill_paths: list[Path] = []
+    entries_seen = 0
+    while pending:
+        directory = pending.pop()
+        child_directories: list[Path] = []
+        try:
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    entries_seen += 1
+                    if entries_seen > MAX_SKILLS_PER_ROOT:
+                        return (), "skill root entry limit exceeded"
+                    try:
+                        if entry.is_symlink():
+                            continue
+                        if entry.is_dir(follow_symlinks=False):
+                            child_directories.append(Path(entry.path))
+                        elif entry.name == "SKILL.md" and entry.is_file(follow_symlinks=False):
+                            skill_paths.append(Path(entry.path))
+                    except OSError:
+                        return (), "skill root traversal was incomplete"
+        except OSError:
+            return (), "skill root traversal was incomplete"
+        pending.extend(reversed(sorted(child_directories, key=lambda path: path.name)))
+
+    return tuple(sorted(skill_paths)), None
 
 
 def _frontmatter(text: str) -> dict[str, str]:
@@ -46,9 +86,10 @@ def discover_skills(roots: list[str | Path], *, require_safe_files: bool = False
         root_path = Path(root).expanduser()
         if has_symlink_component(root_path) or not root_path.exists():
             continue
-        for count, path in enumerate(sorted(root_path.rglob("SKILL.md"))):
-            if count >= MAX_SKILLS_PER_ROOT:
-                break
+        skill_paths, issue = _bounded_skill_paths(root_path)
+        if issue:
+            continue
+        for path in skill_paths:
             if has_symlink_component(path):
                 continue
             try:
@@ -86,9 +127,10 @@ def unsafe_skill_files(root: Path) -> tuple[tuple[str, str], ...]:
     if unsafe_skill_root(root) or not root.is_dir():
         return ()
     issues: list[tuple[str, str]] = []
-    for count, path in enumerate(sorted(root.rglob("SKILL.md"))):
-        if count >= MAX_SKILLS_PER_ROOT:
-            break
+    skill_paths, issue = _bounded_skill_paths(root)
+    if issue:
+        return ((str(root), issue),)
+    for path in skill_paths:
         if reason := unsafe_skill_file(path):
             issues.append((str(path), reason))
     return tuple(issues)
@@ -134,3 +176,14 @@ def _keywords(text: str) -> list[str]:
     stopwords = {"a", "an", "and", "for", "from", "in", "of", "the", "to", "use", "when"}
     words = re.findall(r"[a-z0-9]+", text.lower())
     return list(dict.fromkeys(word for word in words if len(word) > 3 and word not in stopwords))
+
+
+def discover_inventory(config, *, home: Path | None = None, project: Path | None = None) -> tuple[Capability, ...]:
+    """Discover configured and host-local inventory through the bounded scanner.
+
+    Imported lazily because inventory metadata parsing reuses the skill frontmatter
+    helpers in this module.
+    """
+    from .inventory import discover_inventory as _discover_inventory
+
+    return _discover_inventory(config, home=home, project=project)

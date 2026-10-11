@@ -19,17 +19,34 @@ class SkillRoot:
     name: str
     path: str
     trust: str = "unverified"
+    kind: str = "skill"
+    hosts: tuple[str, ...] | None = None
 
     def __post_init__(self) -> None:
         if not _ROOT_NAME.fullmatch(self.name):
             raise ValueError(f"invalid skill-root name: {self.name!r}")
         if self.trust not in {"local", "unverified"}:
             raise ValueError("discovered roots may be local or unverified")
+        if self.kind not in {"skill", "agent"}:
+            raise ValueError("root kind must be skill or agent")
+        if self.hosts is not None:
+            if not isinstance(self.hosts, (tuple, list)) or any(
+                not isinstance(host, str) or host not in {"codex", "claude", "opencode"}
+                for host in self.hosts
+            ):
+                raise ValueError("root hosts must be supported hosts or null")
+            if len(set(self.hosts)) != len(self.hosts):
+                raise ValueError("root hosts must be unique")
+            object.__setattr__(self, "hosts", tuple(self.hosts))
+        if self.kind == "agent" and (self.hosts is None or len(self.hosts) != 1):
+            raise ValueError("agent roots require one explicit host")
         if not self.path.strip() or "\x00" in self.path:
             raise ValueError("skill-root path is required")
         normalized = Path(self.path).expanduser()
         if not normalized.is_absolute():
             raise ValueError("skill-root path must be absolute")
+        if has_symlink_component(normalized):
+            raise ValueError("skill-root path is symlinked and must not contain symlinks")
         object.__setattr__(self, "path", str(normalized))
 
 
@@ -60,17 +77,23 @@ def default_roots(home: Path | None = None, project: Path | None = None) -> tupl
     home = home or Path.home()
     project = project or Path.cwd()
     config_home = Path(os.environ.get("XDG_CONFIG_HOME") or home / ".config")
-    candidates = (
-        SkillRoot("agents", str(home / ".agents" / "skills")),
-        SkillRoot("codex", str(home / ".codex" / "skills")),
-        SkillRoot("claude", str(home / ".claude" / "skills")),
-        SkillRoot("opencode", str(config_home / "opencode" / "skills")),
-        SkillRoot("project-agents", str(project / ".agents" / "skills")),
-        SkillRoot("project-codex", str(project / ".codex" / "skills")),
-        SkillRoot("project-claude", str(project / ".claude" / "skills")),
-        SkillRoot("project-opencode", str(project / ".opencode" / "skills")),
+    candidates: tuple[tuple[str, Path, tuple[str, ...] | None], ...] = (
+        ("agents", home / ".agents" / "skills", None),
+        ("codex", home / ".codex" / "skills", ("codex",)),
+        ("claude", home / ".claude" / "skills", ("claude",)),
+        ("opencode", config_home / "opencode" / "skills", ("opencode",)),
+        ("project-agents", project / ".agents" / "skills", None),
+        ("project-codex", project / ".codex" / "skills", ("codex",)),
+        ("project-claude", project / ".claude" / "skills", ("claude",)),
+        ("project-opencode", project / ".opencode" / "skills", ("opencode",)),
     )
-    return tuple(root for root in candidates if Path(root.path).is_dir())
+    # Skip symlinked defaults instead of failing config loading; explicitly
+    # configured symlinked roots are still rejected by SkillRoot.
+    return tuple(
+        SkillRoot(name, str(path), hosts=hosts)
+        for name, path, hosts in candidates
+        if path.is_dir() and not has_symlink_component(path)
+    )
 
 
 def load_config(path: Path | None = None) -> RouterConfig:

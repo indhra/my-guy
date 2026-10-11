@@ -25,7 +25,9 @@ class CapabilityCatalog:
                 triggers TEXT NOT NULL,
                 invocation TEXT NOT NULL,
                 trust TEXT NOT NULL,
-                active INTEGER NOT NULL DEFAULT 1
+                active INTEGER NOT NULL DEFAULT 1,
+                kind TEXT NOT NULL DEFAULT 'skill',
+                hosts TEXT
             )"""
         )
         columns = {row[1] for row in self.connection.execute("PRAGMA table_info(capabilities)")}
@@ -33,6 +35,14 @@ class CapabilityCatalog:
             self.connection.execute(
                 "ALTER TABLE capabilities ADD COLUMN active INTEGER NOT NULL DEFAULT 1"
             )
+        if "kind" not in columns:
+            self.connection.execute(
+                "ALTER TABLE capabilities ADD COLUMN kind TEXT NOT NULL DEFAULT 'skill'"
+            )
+        if "hosts" not in columns:
+            # SQL NULL marks legacy rows whose host availability is unknown;
+            # a stored JSON [] represents an explicitly empty host set.
+            self.connection.execute("ALTER TABLE capabilities ADD COLUMN hosts TEXT")
         self.connection.commit()
 
     def close(self) -> None:
@@ -60,13 +70,15 @@ class CapabilityCatalog:
                 json.dumps(capability.triggers),
                 capability.invocation,
                 capability.trust,
+                capability.kind,
+                json.dumps(capability.hosts) if capability.hosts is not None else None,
             )
             for capability in capabilities
         ]
         self.connection.executemany(
             """INSERT INTO capabilities
-               (id, source, description, domains, triggers, invocation, trust, active)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+               (id, source, description, domains, triggers, invocation, trust, kind, hosts, active)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                ON CONFLICT(id) DO UPDATE SET
                  source=excluded.source,
                  description=excluded.description,
@@ -74,6 +86,8 @@ class CapabilityCatalog:
                  triggers=excluded.triggers,
                  invocation=excluded.invocation,
                  trust=excluded.trust,
+                 kind=excluded.kind,
+                 hosts=excluded.hosts,
                  active=1""",
             rows,
         )
@@ -94,6 +108,8 @@ class CapabilityCatalog:
                 json.dumps(capability.triggers),
                 capability.invocation,
                 capability.trust,
+                capability.kind,
+                json.dumps(capability.hosts) if capability.hosts is not None else None,
             )
             for capability in capabilities
         ]
@@ -101,8 +117,8 @@ class CapabilityCatalog:
             self.connection.execute("UPDATE capabilities SET active = 0")
             self.connection.executemany(
                 """INSERT INTO capabilities
-                   (id, source, description, domains, triggers, invocation, trust, active)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+                   (id, source, description, domains, triggers, invocation, trust, kind, hosts, active)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
                    ON CONFLICT(id) DO UPDATE SET
                      source=excluded.source,
                      description=excluded.description,
@@ -110,6 +126,8 @@ class CapabilityCatalog:
                      triggers=excluded.triggers,
                      invocation=excluded.invocation,
                      trust=excluded.trust,
+                     kind=excluded.kind,
+                     hosts=excluded.hosts,
                      active=1""",
                 rows,
             )
@@ -154,4 +172,6 @@ class CapabilityCatalog:
             triggers=tuple(json.loads(row["triggers"])),
             invocation=row["invocation"],
             trust=row["trust"],
+            kind=row["kind"],
+            hosts=tuple(json.loads(row["hosts"])) if row["hosts"] is not None else None,
         )

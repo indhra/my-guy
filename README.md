@@ -33,3 +33,7 @@ my-guy list security
 The sample request above is a fixed literal. For a user's actual request, pass the text through stdin as data; do not build a shell command from it.
 
 My Guy does not invoke specialists, send prompts to providers, or silently accept third-party instructions. Feedback is off by default and only produces review proposals when enabled. See [Operations](docs/OPERATIONS.md), [Security](SECURITY.md), [Releasing](docs/RELEASING.md), and [Contributing](CONTRIBUTING.md).
+
+## Host-aware inventory work
+
+The agent and plugin inventory expansion is post-`v0.1.0` work. It records capability availability on Codex, Claude Code, or OpenCode, shows cross-host matches as prepared handoffs that require operator approval, and treats legacy catalog rows as unknown until a fresh scan verifies their host scope. This is a deliberate breaking change to OpenRouter handoffs: they are disabled until explicitly mapped to a supported agent host. OpenRouter remains a provider gateway, not an agent host, and this handoff path makes no network call. See [Architecture](docs/ARCHITECTURE.md), [Operations](docs/OPERATIONS.md), and [Status](docs/STATUS.md) for the current behavior and limits.

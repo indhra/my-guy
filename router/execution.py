@@ -4,7 +4,11 @@ import json
 from typing import Protocol
 
 from .approval import ApprovalRequired
+from .errors import HostMappingRequired
 from .models import Capability, RouteDecision
+
+CANONICAL_HOSTS = frozenset({"codex", "claude", "opencode"})
+OPENROUTER_HOST = "openrouter"
 
 
 @dataclass(frozen=True)
@@ -18,6 +22,8 @@ class ApprovalToken:
         payload = json.dumps(
             {
                 "capability_id": capability.id,
+                "capability_kind": capability.kind,
+                "capability_hosts": capability.hosts,
                 "candidates": decision.candidates,
                 "decision_request": decision.request,
                 "invocation": capability.invocation,
@@ -56,8 +62,23 @@ def execute(
         raise PermissionError("clarification decisions cannot be executed")
     if capability.id not in decision.candidates:
         raise PermissionError("capability is not one of the approved route candidates")
+    if capability.hosts == ():
+        raise PermissionError("capability has no available hosts")
+    # Harness-specific adapters require explicit host evidence. A generic
+    # adapter with no declared harness remains host-neutral.
+    adapter_host = getattr(adapter, "harness", None)
+    openrouter_handoff = adapter_host == OPENROUTER_HOST
+    if adapter_host is not None and not openrouter_handoff:
+        if adapter_host not in CANONICAL_HOSTS:
+            raise PermissionError("adapter declares an unsupported host")
+        if capability.hosts is None:
+            raise PermissionError("capability host availability is unknown")
+        if adapter_host not in capability.hosts:
+            raise PermissionError("adapter host is not available for this capability")
     if approval is None or not approval.matches(decision, capability, request):
         raise ApprovalRequired("matching explicit approval is required before execution")
     if capability.invocation not in adapter.allowed_invocations:
         raise PermissionError("adapter does not allow this invocation")
+    if openrouter_handoff:
+        raise HostMappingRequired()
     return adapter.invoke(capability.invocation, request)

@@ -5,7 +5,10 @@ from router.models import Capability, RouteDecision
 
 def test_codex_adapter_renders_approved_handoff_without_execution():
     decision = RouteDecision("recommend", "Review security.", ("security",), "source=ecc", 0.9)
-    capability = Capability("security", "ecc", "Security review", (), ("security",), "skill:security", "local")
+    capability = Capability(
+        "security", "ecc", "Security review", (), ("security",), "skill:security", "local",
+        hosts=("codex",),
+    )
     adapter = CodexAdapter(frozenset({"skill:security"}))
 
     handoff = execute(

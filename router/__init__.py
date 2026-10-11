@@ -4,6 +4,7 @@ from .core import route
 from .discovery import discover_skills
 from .evaluation import EvaluationCase, EvaluationReport, evaluate
 from .execution import ApprovalToken, InvocationAdapter, execute
+from .errors import HostMappingRequired
 from .adapters import (
     ClaudeAdapter,
     ClaudeHandoff,
@@ -24,6 +25,7 @@ __all__ = [
     "CapabilityCatalog",
     "ConveneResult",
     "ApprovalRequired",
+    "HostMappingRequired",
     "RouteDecision",
     "discover_skills",
     "EvaluationCase",
