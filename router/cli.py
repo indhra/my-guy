@@ -18,6 +18,7 @@ from .feedback import FeedbackStore
 from .lifecycle import SUPPORTED_HARNESSES, SkillInstaller, standard_skill_roots
 from .onboarding import guided_init
 from .path_safety import unsafe_skill_root
+from .recognition import recognition_check
 from .registry import load_registry
 from .semantic import LEXICAL_BACKEND, SemanticSearch
 from .sync import sync_capabilities
@@ -379,7 +380,9 @@ def _main(argv: list[str] | None = None) -> int:
     if args.command == "status":
         status = SkillInstaller(app_home()).inspect(args.harness, args.root)
         if args.json:
-            print(json.dumps(asdict(status), indent=2))
+            payload = asdict(status)
+            payload["recognition"] = asdict(recognition_check(args.harness, args.root))
+            print(json.dumps(payload, indent=2))
         else:
             print(f"{status.state.upper()}: {status.summary}")
             print(f"Target: {status.target}")
@@ -486,7 +489,10 @@ def _main(argv: list[str] | None = None) -> int:
             "provider_execution": "not-implemented; adapters render handoffs only",
         }
         if args.harness:
-            checks["installation"] = asdict(SkillInstaller(app_home()).inspect(args.harness, args.root))
+            checks["installation"] = {
+                **asdict(SkillInstaller(app_home()).inspect(args.harness, args.root)),
+                "recognition": asdict(recognition_check(args.harness, args.root)),
+            }
         actions = []
         if invalid_roots:
             actions.extend(
