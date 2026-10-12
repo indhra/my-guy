@@ -16,13 +16,14 @@ from .core import TRUSTED_FOR_ROUTING, matching_capabilities, route
 from .discovery import discover_inventory, unsafe_skill_files
 from .feedback import FeedbackStore
 from .lifecycle import SUPPORTED_HARNESSES, SkillInstaller, standard_skill_roots
+from .onboarding import guided_init
 from .path_safety import unsafe_skill_root
 from .registry import load_registry
 from .semantic import LEXICAL_BACKEND, SemanticSearch
 from .sync import sync_capabilities
 
 
-COMMANDS = frozenset({"route", "sync", "list", "config", "install", "upgrade", "disable", "rollback", "uninstall", "status", "feedback", "proposals", "doctor"})
+COMMANDS = frozenset({"route", "sync", "list", "config", "init", "install", "upgrade", "disable", "rollback", "uninstall", "status", "feedback", "proposals", "doctor"})
 MAX_REQUEST_LENGTH = 1_048_576
 
 
@@ -137,6 +138,49 @@ def _warn_stray_options(tokens, options) -> None:
         )
 
 
+def _cmd_init(args, config: RouterConfig, config_path: Path, catalog: CapabilityCatalog) -> int:
+    prompter = None
+    if not args.non_interactive and sys.stdin.isatty():
+        def prompter(root: SkillRoot, skill_count: int) -> bool:
+            answer = input(
+                f"Trust skill root '{root.name}' ({root.path}) "
+                f"with {skill_count} discovered skills? [y/N] "
+            )
+            return answer.strip().lower() in {"y", "yes"}
+    config, report = guided_init(
+        config,
+        installer=SkillInstaller(app_home()),
+        trust_names=tuple(args.trust or ()),
+        prompter=prompter,
+    )
+    save_config(config, config_path)
+    discovered, stale = _sync(config, catalog)
+    payload = {
+        **asdict(report),
+        "discovered": discovered,
+        "stale": stale,
+        "config": str(config_path),
+    }
+    if args.json:
+        print(json.dumps(payload, indent=2))
+        return 0
+    for root in report.roots:
+        if not root.exists:
+            state = "missing"
+        else:
+            state = f"{root.skill_count} skills, {root.trust}"
+        via = f" ({root.trusted_by})" if root.trusted_by else ""
+        print(f"{root.name}: {root.path} — {state}{via}")
+    print(f"Discovered {discovered} capabilities across {report.trusted_roots} trusted roots.")
+    for action in report.next_actions:
+        print(f"Next: {action}")
+    if report.trusted_roots:
+        print("Try: printf '%s\\n' 'Review this authentication design' | my-guy route --stdin --json")
+    else:
+        print("Trust a reviewed root, then run my-guy route again.")
+    return 0
+
+
 def _decision_payload(decision, capabilities, host: str | None = None, *, include_all: bool = False) -> dict:
     by_id = {capability.id: capability for capability in capabilities}
     visible_candidates = decision.candidates if include_all else decision.candidates[:MAX_ROUTE_JSON_ENTRIES]
@@ -223,6 +267,14 @@ def build_parser() -> argparse.ArgumentParser:
     route_parser.add_argument("--all", action="store_true", help="include every match in JSON")
 
     sub.add_parser("sync", help="refresh the local capability directory")
+    init_parser = sub.add_parser(
+        "init", help="guided first-run setup: detect roots, verify bundled skills, sync"
+    )
+    init_parser.add_argument("--json", action="store_true")
+    init_parser.add_argument("--non-interactive", action="store_true",
+                             help="never prompt; report review commands instead")
+    init_parser.add_argument("--trust", action="append", metavar="ROOT",
+                             help="explicitly trust a configured skill root by name")
     list_parser = sub.add_parser("list", help="list or search directory entries")
     list_parser.add_argument("query", nargs="*")
     list_parser.add_argument("--include-stale", action="store_true")
@@ -468,6 +520,8 @@ def _main(argv: list[str] | None = None) -> int:
     _secure_state_home()
     catalog = CapabilityCatalog(catalog_path)
     try:
+        if args.command == "init":
+            return _cmd_init(args, config, config_path, catalog)
         count, stale = _sync(config, catalog)
         if args.command == "sync":
             print(json.dumps({"discovered": count, "stale": stale}, indent=2))
