@@ -61,7 +61,7 @@ def test_collect_roots_does_not_shadow_a_configured_name(tmp_path, monkeypatch):
     assert roots[0].path == str(configured)
 
 
-def test_verified_bundled_only_root_is_auto_trusted(tmp_path, monkeypatch):
+def test_verified_bundled_only_root_is_reported_without_auto_trust(tmp_path, monkeypatch):
     root = tmp_path / "claude" / "skills"
     root.mkdir(parents=True)
     installer = _installer(tmp_path)
@@ -74,10 +74,48 @@ def test_verified_bundled_only_root_is_auto_trusted(tmp_path, monkeypatch):
 
     new_config, report = guided_init(config, installer=installer)
 
-    assert new_config.roots[0].trust == "local"
-    assert report.roots[0].trusted_by == "bundled-verified"
-    assert report.trusted_roots == 1
+    assert new_config.roots[0].trust == "unverified"
+    assert report.roots[0].trusted_by is None
+    assert report.roots[0].front_door_verified is True
+    assert report.trusted_roots == 0
     assert report.next_actions == ()
+
+
+def test_modified_bundled_root_is_not_front_door_verified(tmp_path, monkeypatch):
+    root = tmp_path / "claude" / "skills"
+    root.mkdir(parents=True)
+    installer = _installer(tmp_path)
+    installer.install("claude", root)
+    (root / "my-guy" / "SKILL.md").write_text("modified", encoding="utf-8")
+    monkeypatch.setattr(
+        onboarding, "standard_skill_roots", lambda: _harness_roots(tmp_path, root)
+    )
+    monkeypatch.setattr(onboarding, "default_roots", lambda **kw: ())
+    config = RouterConfig(roots=(SkillRoot("claude", str(root), hosts=("claude",)),))
+
+    new_config, report = guided_init(config, installer=installer)
+
+    assert new_config.roots[0].trust == "unverified"
+    assert report.roots[0].front_door_verified is False
+    assert report.roots[0].next_action is not None
+
+
+def test_verified_bundled_root_with_sibling_requires_review(tmp_path, monkeypatch):
+    root = tmp_path / "claude" / "skills"
+    root.mkdir(parents=True)
+    installer = _installer(tmp_path)
+    installer.install("claude", root)
+    _write_skill(root, "other-pack", "An unreviewed third-party skill.")
+    monkeypatch.setattr(
+        onboarding, "standard_skill_roots", lambda: _harness_roots(tmp_path, root)
+    )
+    monkeypatch.setattr(onboarding, "default_roots", lambda **kw: ())
+    config = RouterConfig(roots=(SkillRoot("claude", str(root), hosts=("claude",)),))
+
+    _, report = guided_init(config, installer=installer)
+
+    assert report.roots[0].front_door_verified is False
+    assert report.roots[0].next_action is not None
 
 
 def test_mixed_root_is_never_auto_trusted(tmp_path, monkeypatch):

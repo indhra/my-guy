@@ -170,6 +170,8 @@ def _cmd_init(args, config: RouterConfig, config_path: Path, catalog: Capability
         else:
             state = f"{root.skill_count} skills, {root.trust}"
         via = f" ({root.trusted_by})" if root.trusted_by else ""
+        if root.front_door_verified:
+            via = f"{via} (front door verified)"
         print(f"{root.name}: {root.path} — {state}{via}")
     print(f"Discovered {discovered} capabilities across {report.trusted_roots} trusted roots.")
     for action in report.next_actions:

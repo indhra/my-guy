@@ -31,7 +31,10 @@ printf '%s\n' 'Review this authentication design' | my-guy route --stdin --json
 my-guy list security
 ```
 
-`my-guy init` never silently trusts a skill root. A root containing only the receipt-verified bundled front-door skill may be trusted automatically; every other root reports the exact `config --add-root ... local` command to run after review.
+`my-guy init` never silently trusts a skill root. It verifies the bundled
+front-door skill by installer receipt and digest, but never trusts that root
+automatically; every root reports the exact `config --add-root ... local`
+command to run after review.
 
 The sample request above is a fixed literal. For a user's actual request, pass the text through stdin as data; do not build a shell command from it.
 

@@ -1,12 +1,10 @@
 """Guided first-run setup for the local capability directory.
 
 ``my-guy init`` detects configured and standard skill roots, reports what was
-found, and prepares the catalog. Trust stays explicit: roots whose entire
-skill inventory is the receipt-verified bundled front-door skill may be marked
-``local`` automatically (their provenance is verified by our own installer),
-and the operator may name additional roots to trust. Everything else reports
-the review step and the exact command that grants trust; nothing is silently
-trusted.
+found, and prepares the catalog. Trust stays explicit: the installer verifies
+the bundled front-door skill by receipt and digest, but never trusts a root
+automatically. The operator may name roots to trust. Everything else reports
+the review step and the exact command that grants trust.
 """
 
 from __future__ import annotations
@@ -30,6 +28,7 @@ class RootReport:
     trust: str
     trusted_by: str | None
     next_action: str | None
+    front_door_verified: bool
 
 
 @dataclass(frozen=True)
@@ -62,7 +61,7 @@ def collect_roots(config: RouterConfig) -> tuple[SkillRoot, ...]:
 def _verified_bundled_only(
     root: SkillRoot, installer: SkillInstaller, discovered_count: int
 ) -> bool:
-    """True when the root holds only our receipt-verified bundled skill.
+    """True when the root holds only our receipt- and digest-verified bundle.
 
     The front-door skill's provenance is proven by the installer receipt and
     digest, and the root must contain no other skills: trust is root-scoped,
@@ -92,8 +91,8 @@ def guided_init(
     ``trust_names`` names roots the operator explicitly trusts (same effect as
     ``config --add-root NAME PATH local``). ``prompter`` is called once per
     remaining unverified root that contains skills; returning True grants
-    trust. Verified-bundled roots are trusted automatically. The returned
-    config must be saved by the caller before syncing.
+    trust. A verified bundled front door is reported without granting trust.
+    The returned config must be saved by the caller before syncing.
     """
     roots = collect_roots(config)
     by_name = {root.name: root for root in roots}
@@ -111,13 +110,16 @@ def guided_init(
         trust = root.trust
         trusted_by: str | None = None
         next_action: str | None = None
+        front_door_verified = (
+            exists and _verified_bundled_only(root, installer, skill_count)
+        )
 
         if not exists:
             next_action = "Skill root does not exist yet; create it or remove it from config."
+        elif front_door_verified:
+            pass
         elif trust != "local":
-            if _verified_bundled_only(root, installer, skill_count):
-                trust, trusted_by = "local", "bundled-verified"
-            elif root.name in trust_names:
+            if root.name in trust_names:
                 if reason := unsafe_skill_root(path):
                     raise PermissionError(f"trusted skill root is unsafe: {reason}")
                 trust, trusted_by = "local", "operator"
@@ -137,7 +139,10 @@ def guided_init(
         if trust != root.trust:
             updated[root.name] = replace(root, trust=trust)
         reports.append(
-            RootReport(root.name, root.path, exists, skill_count, trust, trusted_by, next_action)
+            RootReport(
+                root.name, root.path, exists, skill_count, trust, trusted_by,
+                next_action, front_door_verified,
+            )
         )
 
     trusted_roots = sum(report.trust == "local" for report in reports)
