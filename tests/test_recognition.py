@@ -3,8 +3,7 @@ from importlib import resources
 
 import pytest
 
-from router.lifecycle import SUPPORTED_HARNESSES
-from router.recognition import HOST_SPECS, recognition_check
+from router.recognition import SUPPORTED_HARNESSES, recognition_check
 
 
 def _bundled_skill() -> str:
@@ -20,12 +19,8 @@ def _install_text(root: Path, text: str, *, directory: str = "my-guy") -> Path:
     return target
 
 
-def test_recognition_specs_cover_every_harness():
-    assert set(HOST_SPECS) == set(SUPPORTED_HARNESSES)
-
-
 def test_bundled_skill_is_recognized_on_every_host(tmp_path):
-    for harness in sorted(HOST_SPECS):
+    for harness in sorted(SUPPORTED_HARNESSES):
         root = tmp_path / harness / "skills"
         _install_text(root, _bundled_skill())
         report = recognition_check(harness, root)
@@ -84,16 +79,18 @@ def test_oversized_description_is_invalid(tmp_path):
     )
 
 
-def test_host_specific_frontmatter_keys(tmp_path):
+def test_unknown_frontmatter_key_warns_but_is_recognized(tmp_path):
     root = tmp_path / "skills"
     _install_text(
         root,
-        "---\nname: my-guy\ndescription: Front door.\nallowed-tools: Bash(my-guy:*)\n---\n\nBody.\n",
+        "---\nname: my-guy\ndescription: Front door.\nx-vendor: custom\n---\n\nBody.\n",
     )
 
-    assert recognition_check("claude", root).state == "recognized"
     report = recognition_check("codex", root)
-    assert report.state == "invalid"
-    assert any(
-        check.name == "frontmatter_keys" and not check.passed for check in report.checks
-    )
+    assert report.state == "recognized"
+    assert report.warnings == ("unknown frontmatter key: x-vendor",)
+
+
+def test_unsupported_harness_raises_value_error(tmp_path):
+    with pytest.raises(ValueError, match="unsupported harness"):
+        recognition_check("unknown", tmp_path / "skills")
