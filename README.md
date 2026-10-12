@@ -25,10 +25,16 @@ The agent's detailed checklist, supported roots, and fallback commands are in [A
 The CLI command is `my-guy` (Python package: `agent-router`). The included front-door skill goes into one dedicated host root. `my-guy sync` reads local skill metadata into a searchable catalog. Unverified roots remain searchable but cannot cause an actionable recommendation. A fresh route can correctly return `clarify`; reviewing and explicitly trusting a relevant installed root is what makes a recommendation useful.
 
 ```bash
+my-guy init        # detect roots, verify bundled skills, sync, and show next steps
 my-guy doctor
 printf '%s\n' 'Review this authentication design' | my-guy route --stdin --json
 my-guy list security
 ```
+
+`my-guy init` never silently trusts a skill root. It verifies the bundled
+front-door skill by installer receipt and digest, but never trusts that root
+automatically; every root reports the exact `config --add-root ... local`
+command to run after review.
 
 The sample request above is a fixed literal. For a user's actual request, pass the text through stdin as data; do not build a shell command from it.
 

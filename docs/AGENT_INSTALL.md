@@ -64,9 +64,10 @@ my-guy sync
 printf '%s\n' 'Review this authentication design' | my-guy route --stdin --json
 ```
 
-Substitute the selected host and root in all six commands. The quoted request is a fixed example; for real user text, feed stdin through a data channel and never interpolate the request into a shell command. The route may return `clarify` on a fresh setup. That is an expected trust boundary, not proof of a broken installation. Only after inspecting a real skill root and getting permission may the agent add it as trusted:
+Substitute the selected host and root in all six commands. The quoted request is a fixed example; for real user text, feed stdin through a data channel and never interpolate the request into a shell command. The route may return `clarify` on a fresh setup. That is an expected trust boundary, not proof of a broken installation. `my-guy init` (or `my-guy init --non-interactive` inside an agent) detects configured and standard skill roots, reports what it found, syncs, and prints the exact trust command per unverified root. It verifies the bundled front-door skill by installer receipt and digest but never trusts a root automatically. Only after inspecting a real skill root and getting permission may the agent add it as trusted:
 
 ```bash
+my-guy init --non-interactive
 my-guy config --add-root reviewed-skills /absolute/path/to/skills local
 my-guy sync
 ```

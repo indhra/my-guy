@@ -2,6 +2,10 @@
 
 The [GitHub Releases](https://github.com/indhra/my-guy/releases) page is the publication record. [`v0.1.0`](https://github.com/indhra/my-guy/releases/tag/v0.1.0) is a published alpha prerelease from commit `c6edf09de6a9fcd6df80ae7116f0735a5ecb0d7f`, with wheel, source distribution, and `SHA256SUMS` assets.
 
+## Unreleased
+
+- Added `my-guy init` for guided first-run setup: detects configured and standard roots, verifies the bundled front-door skill by installer receipt and digest without automatically trusting its root, accepts `--trust NAME` and interactive prompts, and prints the exact trust command for every other root.
+
 ## v0.1.0 alpha prerelease — 2026-09-29
 
 - Added the `my-guy` CLI (`agent-router` Python package) for source-aware, harness-neutral routing to `clarify`, `recommend`, or `convene` using local skill metadata.
