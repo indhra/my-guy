@@ -4,9 +4,14 @@ from typing import NamedTuple
 
 from .models import Capability, RouteDecision
 from .query import exclusion_tokens, explicit_abstention, matched_aliases, routing_spans, uncertain_exclusion
+from .semantic import LEXICAL_BACKEND, SemanticSearch
 
 MAX_REASON_CANDIDATES = 20
 MIN_RECOMMEND_CONFIDENCE = 0.7
+# A semantic-only match counts like a single alias hit: enough to cross the
+# confidence gate on its own, but never stronger than direct token evidence.
+SEMANTIC_SCORE = 2
+SEMANTIC_MIN_SIMILARITY = 0.55
 TRUSTED_FOR_ROUTING = frozenset({"verified", "local"})
 
 
@@ -19,6 +24,15 @@ def _evidence(matched: set[str], aliases: tuple[tuple[str, str], ...]) -> str:
     return ", ".join(parts)
 
 
+def _match_evidence(
+    matched: set[str], aliases: tuple[tuple[str, str], ...], semantic_note: str
+) -> str:
+    base = _evidence(matched, aliases)
+    if base and semantic_note:
+        return f"{base}, {semantic_note}"
+    return base or semantic_note
+
+
 class CapabilityMatch(NamedTuple):
     score: int
     capability: Capability
@@ -27,13 +41,18 @@ class CapabilityMatch(NamedTuple):
 
 
 def route(
-    request: str, capabilities: Iterable[Capability], *, host: str | None = None
+    request: str,
+    capabilities: Iterable[Capability],
+    *,
+    host: str | None = None,
+    semantic: SemanticSearch | None = None,
 ) -> RouteDecision:
     """Return a recommendation without invoking tools or changing files.
 
-    This first slice intentionally uses transparent token matches. A later
-    adapter may add semantic classification, but it must preserve this
-    approval boundary and expose its evidence.
+    Transparent token matches are the primary evidence. An explicitly
+    configured non-lexical ``semantic`` backend may add candidates and
+    corroborating notes, but every candidate still passes the same exclusion,
+    trust, host-availability, and confidence gates.
     """
     if host is not None and host not in {"codex", "claude", "opencode"}:
         raise ValueError(f"unsupported requesting host: {host}")
@@ -60,19 +79,46 @@ def route(
     aliases = matched_aliases(clean_request)
     excluded = exclusion_tokens(excluded_text)
     excluded_alias_triggers = {trigger for _, trigger in matched_aliases(excluded_text)}
+    capabilities = tuple(capabilities)
     scored: list[tuple[int, Capability, set[str], tuple[tuple[str, str], ...]]] = []
     excluded_matches = False
+
+    def excluded_capability(capability: Capability) -> bool:
+        domain_tokens = set().union(*(_tokens(domain) for domain in capability.domains))
+        return bool(
+            excluded.intersection(set(capability.triggers) | domain_tokens)
+            or excluded_alias_triggers.intersection(capability.triggers)
+        )
+
     for capability in capabilities:
         matched = text.intersection(capability.triggers)
         applicable_aliases = tuple(alias for alias in aliases if alias[1] in capability.triggers)
         if matched or applicable_aliases:
-            domain_tokens = set().union(*(_tokens(domain) for domain in capability.domains))
-            if (excluded.intersection(set(capability.triggers) | domain_tokens)
-                    or excluded_alias_triggers.intersection(capability.triggers)):
+            if excluded_capability(capability):
                 excluded_matches = True
                 continue
             score = len(matched) + 2 * len(applicable_aliases)
             scored.append((score, capability, matched, applicable_aliases))
+
+    semantic_notes: dict[str, str] = {}
+    if semantic is not None and semantic.backend != LEXICAL_BACKEND:
+        scored_ids = {item[1].id for item in scored}
+        for hit in semantic.search(clean_request, capabilities):
+            if hit.backend == LEXICAL_BACKEND:
+                continue
+            if hit.score < SEMANTIC_MIN_SIMILARITY:
+                break
+            capability = hit.capability
+            note = f"semantic {hit.score:.2f} ({hit.backend})"
+            if capability.id in scored_ids:
+                semantic_notes[capability.id] = note
+                continue
+            if excluded_capability(capability):
+                excluded_matches = True
+                continue
+            scored.append((SEMANTIC_SCORE, capability, set(), ()))
+            scored_ids.add(capability.id)
+            semantic_notes[capability.id] = note
 
     scored.sort(
         key=lambda item: (
@@ -178,7 +224,8 @@ def route(
             request=request,
             candidates=(capability.id,),
             reason=(
-                f"Matched {_evidence(matched, matched_phrases)}; source={capability.source}; "
+                f"Matched {_match_evidence(matched, matched_phrases, semantic_notes.get(capability.id, ''))}; "
+                f"source={capability.source}; "
                 f"invoke {capability.invocation}.{availability}"
             ),
             confidence=confidence,
@@ -186,7 +233,8 @@ def route(
 
     candidate_ids = tuple(item[1].id for item in selected)
     evidence = "; ".join(
-        f"{item[1].id} (source={item[1].source}): {_evidence(item[2], item[3])}"
+        f"{item[1].id} (source={item[1].source}): "
+        f"{_match_evidence(item[2], item[3], semantic_notes.get(item[1].id, ''))}"
         for item in selected[:MAX_REASON_CANDIDATES]
     )
     if len(selected) > MAX_REASON_CANDIDATES:

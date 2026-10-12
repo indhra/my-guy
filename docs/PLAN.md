@@ -24,7 +24,10 @@ asks for approval before execution.
    This makes the directory stay current after installation.
 6. **Retrieval backends** — keep SQLite lexical search as the baseline, then
    add an optional semantic backend with identical result/evidence contracts.
-   This improves recall without making embeddings mandatory.
+   This improves recall without making embeddings mandatory. The opt-in
+   `openai-embedding` backend is now implemented behind `MY_GUY_*` environment
+   configuration; lexical remains the default and provider failures degrade to
+   it.
 7. **Convene mode** — bounded specialist fan-out, preserved disagreement,
    timeout/failure handling, and explicit synthesis. No fake consensus.
    Pure synthesis contract is now implemented; adapter fan-out remains later.

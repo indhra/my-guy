@@ -46,6 +46,10 @@ OpenRouter is a provider gateway, not an agent host. Although published `v0.1.0`
 
 State defaults to `$XDG_CONFIG_HOME/my-guy` or `~/.config/my-guy`. `MY_GUY_HOME` selects an isolated state home for tests or a deliberate separate installation. It is not the host skills root. Preserve its ownership and private permissions.
 
+## Optional semantic backend
+
+Routing is lexical by default and makes no network call. Setting `MY_GUY_SEMANTIC_BACKEND=openai-embedding` enables an OpenAI-compatible embeddings backend for `my-guy route`; `MY_GUY_EMBEDDING_URL` (required), `MY_GUY_EMBEDDING_MODEL`, and `MY_GUY_EMBEDDING_API_KEY` configure the endpoint. Request text and capability metadata are sent to that endpoint. URLs must use `https`, except that `http` is allowed for `localhost`, `127.0.0.1`, and `::1`; `OPENAI_API_KEY` is used as a fallback only for the `api.openai.com` hostname. A semantic-only candidate counts like one alias match and must still pass the same trust and confidence gates; the backend name and similarity appear in the reported evidence. If the endpoint fails, the route degrades to the lexical path with the lexical backend label and `"semantic_degraded": true` in JSON output rather than changing routing. Capability vectors are cached locally in the private state directory, never request text; at most 512 capabilities are embedded per route, and larger inventories use lexical matching. `my-guy doctor` reports the configured backend.
+
 - Bad host skill change: `my-guy rollback <host> --root <same-root>` when a snapshot exists.
 - Temporarily stop front-door discovery: `my-guy disable <host> --root <same-root>`.
 - Remove an owned host skill: `my-guy uninstall <host> --root <same-root>`.

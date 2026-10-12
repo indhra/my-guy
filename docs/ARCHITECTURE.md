@@ -7,7 +7,7 @@
 The package has four boundaries:
 
 1. **Directory:** checked-in seed capabilities plus read-only, namespaced `SKILL.md` discovery in SQLite.
-2. **Decision:** transparent lexical evidence, confidence gating, and trust filtering.
+2. **Decision:** transparent lexical evidence, confidence gating, and trust filtering. An opt-in semantic backend may add candidates and labeled corroborating notes, but every candidate passes the same exclusion, trust, host-availability, and confidence gates; a provider failure degrades to lexical evidence rather than failing the route.
 3. **Coordination:** quorum-based synthesis that preserves unavailable specialists and dissent.
 4. **Execution boundary:** exact request/route/capability binding and adapter allowlists. Current adapters return typed handoffs only.
 

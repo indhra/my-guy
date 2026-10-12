@@ -18,6 +18,7 @@ from .feedback import FeedbackStore
 from .lifecycle import SUPPORTED_HARNESSES, SkillInstaller, standard_skill_roots
 from .path_safety import unsafe_skill_root
 from .registry import load_registry
+from .semantic import LEXICAL_BACKEND, SemanticSearch
 from .sync import sync_capabilities
 
 
@@ -393,10 +394,15 @@ def _main(argv: list[str] | None = None) -> int:
              "safe": False, "reason": item["reason"]}
             for item in invalid_roots
         )
+        try:
+            semantic_backend = SemanticSearch.from_env().backend
+        except ValueError as error:
+            semantic_backend = f"misconfigured: {error}"
         checks = {
             "enabled": config.enabled,
             "config": str(config_path),
             "package_version": _package_version(),
+            "semantic_backend": semantic_backend,
             "catalog_parent_ready": _parent_ready(catalog_path),
             "state_home_safe": state_issue is None,
             "roots": root_rows,
@@ -488,8 +494,14 @@ def _main(argv: list[str] | None = None) -> int:
         if not request:
             print("a non-empty request is required", file=sys.stderr)
             return 2
-        decision = route(request, capabilities, host=args.host)
+        semantic = SemanticSearch.from_env(cache_path=app_home() / "embeddings.json")
+        decision = route(request, capabilities, host=args.host, semantic=semantic)
         payload = _decision_payload(decision, capabilities, args.host, include_all=args.all)
+        payload["semantic_backend"] = semantic.backend
+        payload["semantic_degraded"] = (
+            semantic.backend != LEXICAL_BACKEND
+            and semantic.last_backend == LEXICAL_BACKEND
+        )
         if args.json:
             print(json.dumps(payload, indent=2))
         else:
