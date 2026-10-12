@@ -17,7 +17,18 @@ in candidate step 5 were deferred and remain unmet. The OpenCode native skill
 listing above is narrower evidence. Keep the same review, test, checksum, and
 approval gates for future versions, using their own version and exact commit.
 
-The first release channel is GitHub Releases. The Python distribution is named `agent-router`; the command is `my-guy`. Release publication, repository settings, and tags require separate human approval. No workflow publishes automatically.
+The first release channel is GitHub Releases. The Python distribution is named `my-guy` (previously `agent-router` for `v0.1.0`); the command is `my-guy`. Release publication, repository settings, and tags require separate human approval. No workflow publishes automatically.
+
+## PyPI publication (prepared, pending first upload)
+
+The project builds the `my-guy` wheel and source distribution locally, and `pipx install my-guy` / `pip install my-guy` become valid install commands once a release is uploaded. First upload steps for the maintainer, each requiring explicit approval:
+
+1. Bump `version` in `pyproject.toml` to the release version (drop the `.dev0` marker) in the release candidate commit.
+2. Build `dist/` from the exact reviewed commit and pass the existing wheel and source smoke checks.
+3. Upload to PyPI with a scoped API token (`python -m twine upload dist/*`) or configure Trusted Publishing (OIDC) in GitHub settings. Never store PyPI credentials in the repository.
+4. Record the PyPI version, commit SHA, and install evidence in the release notes, then update the install guide's `pipx install my-guy` path.
+
+The `v0.1.0` artifacts keep their `agent-router` name; the exact-SHA tagged install and `verify_tagged_install.py` gate for that release are unchanged.
 
 Before tagging, the maintainer should confirm that `main` requires a reviewed PR and passing CI, release tags cannot be moved casually, private vulnerability reporting works, and Dependabot alerts, CodeQL, secret scanning, and push protection have been reviewed in GitHub settings. Repository-setting changes are separate approved actions; this document does not make them happen.
 

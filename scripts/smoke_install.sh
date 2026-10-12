@@ -21,7 +21,7 @@ cd "$smoke_dir"
 unset PYTHONPATH
 my_guy="$smoke_dir/venv/bin/my-guy"
 "$smoke_dir/venv/bin/python" -c 'from pathlib import Path; import router, sys; assert Path(router.__file__).resolve().is_relative_to(Path(sys.prefix).resolve())'
-installed_version=$("$smoke_dir/venv/bin/python" -c 'from importlib.metadata import version; print(version("agent-router"))')
+installed_version=$("$smoke_dir/venv/bin/python" -c 'from importlib.metadata import version; print(version("my-guy"))')
 test "$("$my_guy" --version)" = "my-guy $installed_version"
 if doctor_output=$("$my_guy" doctor); then
   doctor_exit=0
