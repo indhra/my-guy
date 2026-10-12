@@ -5,7 +5,8 @@ The [GitHub Releases](https://github.com/indhra/my-guy/releases) page is the pub
 ## Unreleased
 
 - Added `my-guy init` for guided first-run setup: detects configured and standard roots, verifies the bundled front-door skill by installer receipt and digest without automatically trusting its root, accepts `--trust NAME` and interactive prompts, and prints the exact trust command for every other root.
-
+- Renamed the Python distribution to `my-guy` (previously `agent-router` for `v0.1.0`); `my-guy --version` resolves either name so existing installs keep working. Wheel and source distributions build as `my_guy-*`; the first PyPI upload is pending maintainer approval.
+- Added an opt-in `openai-embedding` semantic backend for `my-guy route`, configured via `MY_GUY_SEMANTIC_BACKEND` and `MY_GUY_EMBEDDING_*` variables. Lexical matching stays the default and provider failures degrade to it; all candidates still pass the same exclusion, trust, host-availability, and confidence gates.
 ## v0.1.0 alpha prerelease — 2026-09-29
 
 - Added the `my-guy` CLI (`agent-router` Python package) for source-aware, harness-neutral routing to `clarify`, `recommend`, or `convene` using local skill metadata.

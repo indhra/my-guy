@@ -28,10 +28,12 @@ MAX_REQUEST_LENGTH = 1_048_576
 
 
 def _package_version() -> str:
-    try:
-        return metadata.version("agent-router")
-    except metadata.PackageNotFoundError:
-        return "source checkout (package metadata unavailable)"
+    for distribution in ("my-guy", "agent-router"):
+        try:
+            return metadata.version(distribution)
+        except metadata.PackageNotFoundError:
+            continue
+    return "source checkout (package metadata unavailable)"
 
 
 def _validate_host_root(harness: str, root: Path, *, allow_custom_root: bool) -> None:
