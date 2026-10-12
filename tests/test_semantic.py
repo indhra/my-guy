@@ -182,6 +182,21 @@ def test_corrupt_embedding_cache_is_rebuilt(tmp_path):
     assert isinstance(json.loads(cache.read_text()), dict)
 
 
+def test_unwritable_embedding_cache_does_not_degrade_search(tmp_path):
+    parent = tmp_path / "not-a-directory"
+    parent.write_text("occupied")
+    search = SemanticSearch(
+        backend=EMBEDDING_BACKEND,
+        embed_fn=lambda texts: tuple((1.0,) for _ in texts),
+        cache_path=parent / "embeddings.json",
+    )
+
+    hits = search.search("query", CAPABILITIES[:1])
+
+    assert hits[0].backend == EMBEDDING_BACKEND
+    assert search.last_backend == EMBEDDING_BACKEND
+
+
 def test_embedding_api_key_fallback_is_provider_scoped():
     assert _embedding_api_key(
         {"OPENAI_API_KEY": "fallback"}, "https://api.openai.com/v1/embeddings"

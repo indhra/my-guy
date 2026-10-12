@@ -307,8 +307,8 @@ class SemanticSearch:
         current_cache = {key: cache[key] for key in keys if key in cache}
         try:
             self._write_cache(current_cache)
-        except OSError as error:
-            raise SemanticBackendError(f"embedding cache write failed: {error}") from error
+        except OSError:
+            pass
         self.last_backend = self.backend
         capability_vectors = tuple(cache[key] for key in keys)
         ranked = [
