@@ -104,6 +104,8 @@ def route(
     if semantic is not None and semantic.backend != LEXICAL_BACKEND:
         scored_ids = {item[1].id for item in scored}
         for hit in semantic.search(clean_request, capabilities):
+            if hit.backend == LEXICAL_BACKEND:
+                continue
             if hit.score < SEMANTIC_MIN_SIMILARITY:
                 break
             capability = hit.capability

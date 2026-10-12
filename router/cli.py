@@ -18,7 +18,7 @@ from .feedback import FeedbackStore
 from .lifecycle import SUPPORTED_HARNESSES, SkillInstaller, standard_skill_roots
 from .path_safety import unsafe_skill_root
 from .registry import load_registry
-from .semantic import SemanticSearch
+from .semantic import LEXICAL_BACKEND, SemanticSearch
 from .sync import sync_capabilities
 
 
@@ -494,10 +494,14 @@ def _main(argv: list[str] | None = None) -> int:
         if not request:
             print("a non-empty request is required", file=sys.stderr)
             return 2
-        semantic = SemanticSearch.from_env()
+        semantic = SemanticSearch.from_env(cache_path=app_home() / "embeddings.json")
         decision = route(request, capabilities, host=args.host, semantic=semantic)
         payload = _decision_payload(decision, capabilities, args.host, include_all=args.all)
         payload["semantic_backend"] = semantic.backend
+        payload["semantic_degraded"] = (
+            semantic.backend != LEXICAL_BACKEND
+            and semantic.last_backend == LEXICAL_BACKEND
+        )
         if args.json:
             print(json.dumps(payload, indent=2))
         else:

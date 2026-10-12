@@ -9,9 +9,13 @@ lexical backend rather than failing the route.
 """
 
 import json
+import hashlib
 import math
 import os
 import re
+import tempfile
+from pathlib import Path
+from urllib.parse import urlparse
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterable
@@ -27,6 +31,7 @@ DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
 EMBEDDING_TIMEOUT_SECONDS = 15.0
 MAX_EMBEDDING_TEXT_CHARS = 8_192
 MAX_EMBEDDING_BATCH = 128
+MAX_EMBEDDING_CAPABILITIES = 512
 
 EmbedFn = Callable[[tuple[str, ...]], tuple[tuple[float, ...], ...]]
 
@@ -41,6 +46,15 @@ class SearchHit:
 
 class SemanticBackendError(RuntimeError):
     """A configured semantic backend could not answer the query."""
+
+
+def _embedding_api_key(env: dict, url: str) -> str | None:
+    configured = env.get("MY_GUY_EMBEDDING_API_KEY", "").strip()
+    if configured:
+        return configured
+    if urlparse(url).hostname == "api.openai.com":
+        return env.get("OPENAI_API_KEY", "").strip() or None
+    return None
 
 
 def _tokens(text: str) -> set[str]:
@@ -115,7 +129,14 @@ class SemanticSearch:
     reported evidence stays honest.
     """
 
-    def __init__(self, backend: str = LEXICAL_BACKEND, *, embed_fn: EmbedFn | None = None) -> None:
+    def __init__(
+        self,
+        backend: str = LEXICAL_BACKEND,
+        *,
+        embed_fn: EmbedFn | None = None,
+        cache_path: Path | None = None,
+        cache_namespace: str = "",
+    ) -> None:
         if backend not in BACKENDS:
             raise ValueError(
                 f"unsupported semantic backend: {backend}; expected one of {sorted(BACKENDS)}"
@@ -127,9 +148,14 @@ class SemanticSearch:
             )
         self.backend = backend
         self.embed_fn = embed_fn
+        self.cache_path = cache_path
+        self.cache_namespace = cache_namespace
+        self.last_backend: str | None = None
 
     @classmethod
-    def from_env(cls, env: dict | None = None) -> "SemanticSearch":
+    def from_env(
+        cls, env: dict | None = None, *, cache_path: Path | None = None
+    ) -> "SemanticSearch":
         """Build a search from explicit environment configuration.
 
         ``MY_GUY_SEMANTIC_BACKEND`` selects the backend (default
@@ -148,19 +174,81 @@ class SemanticSearch:
                 f"expected one of {sorted(BACKENDS)}"
             )
         url = env.get("MY_GUY_EMBEDDING_URL", "").strip()
-        if not url.startswith(("http://", "https://")):
+        parsed = urlparse(url)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             raise ValueError(
                 "MY_GUY_EMBEDDING_URL must be an http(s) embeddings endpoint "
-                "for the openai-embedding backend"
+                "with a hostname"
+            )
+        if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+            raise ValueError(
+                "MY_GUY_EMBEDDING_URL must use https unless the hostname is localhost"
             )
         model = env.get("MY_GUY_EMBEDDING_MODEL", "").strip() or DEFAULT_EMBEDDING_MODEL
-        api_key = env.get("MY_GUY_EMBEDDING_API_KEY", "").strip() or env.get(
-            "OPENAI_API_KEY", ""
-        ).strip() or None
+        api_key = _embedding_api_key(env, url)
         return cls(
             backend=backend,
             embed_fn=openai_embedding_fn(url=url, model=model, api_key=api_key),
+            cache_path=cache_path,
+            cache_namespace=f"{url}\0{model}",
         )
+
+    def _cache_key(self, text: str) -> str:
+        return hashlib.sha256(
+            f"{self.cache_namespace}\0{text}".encode("utf-8")
+        ).hexdigest()
+
+    def _load_cache(self) -> dict[str, tuple[float, ...]]:
+        if self.cache_path is None:
+            return {}
+        try:
+            payload = json.loads(self.cache_path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                return {}
+            cache: dict[str, tuple[float, ...]] = {}
+            for key, vector in payload.items():
+                if (
+                    isinstance(key, str)
+                    and isinstance(vector, list)
+                    and vector
+                    and all(
+                        isinstance(value, (int, float))
+                        and not isinstance(value, bool)
+                        and math.isfinite(value)
+                        for value in vector
+                    )
+                ):
+                    cache[key] = tuple(float(value) for value in vector)
+            return cache
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            return {}
+
+    def _write_cache(self, cache: dict[str, tuple[float, ...]]) -> None:
+        if self.cache_path is None:
+            return
+        parent = self.cache_path.parent
+        parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+        temporary: str | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", encoding="utf-8", dir=parent, prefix=f".{self.cache_path.name}.",
+                delete=False,
+            ) as output:
+                temporary = output.name
+                os.chmod(temporary, 0o600)
+                json.dump(cache, output, separators=(",", ":"))
+                output.write("\n")
+                output.flush()
+                os.fsync(output.fileno())
+            os.replace(temporary, self.cache_path)
+            os.chmod(self.cache_path, 0o600)
+            temporary = None
+        finally:
+            if temporary is not None:
+                try:
+                    os.unlink(temporary)
+                except OSError:
+                    pass
 
     def _lexical_hits(
         self, query: str, capabilities: tuple[Capability, ...]
@@ -191,18 +279,38 @@ class SemanticSearch:
         if limit is not None and limit < 0:
             raise ValueError("limit must be non-negative or None")
         capabilities = tuple(capabilities)
-        if self.backend == LEXICAL_BACKEND or self.embed_fn is None:
+        if (
+            self.backend == LEXICAL_BACKEND
+            or self.embed_fn is None
+            or len(capabilities) > MAX_EMBEDDING_CAPABILITIES
+        ):
+            self.last_backend = LEXICAL_BACKEND
             ranked = self._lexical_hits(query, capabilities)
             return tuple(ranked if limit is None else ranked[:limit])
         texts = tuple(_capability_text(capability) for capability in capabilities)
+        cache = self._load_cache()
+        keys = tuple(self._cache_key(text) for text in texts)
+        missing = tuple(
+            (key, text) for key, text in zip(keys, texts) if key not in cache
+        )
         try:
-            vectors = self.embed_fn((query, *texts))
-            if len(vectors) != len(texts) + 1:
+            vectors = self.embed_fn((query, *(text for _, text in missing)))
+            if len(vectors) != len(missing) + 1:
                 raise SemanticBackendError("embedding provider returned missing rows")
         except SemanticBackendError:
+            self.last_backend = LEXICAL_BACKEND
             ranked = self._lexical_hits(query, capabilities)
             return tuple(ranked if limit is None else ranked[:limit])
-        query_vector, capability_vectors = vectors[0], vectors[1:]
+        query_vector = vectors[0]
+        for (key, _), vector in zip(missing, vectors[1:]):
+            cache[key] = vector
+        current_cache = {key: cache[key] for key in keys if key in cache}
+        try:
+            self._write_cache(current_cache)
+        except OSError as error:
+            raise SemanticBackendError(f"embedding cache write failed: {error}") from error
+        self.last_backend = self.backend
+        capability_vectors = tuple(cache[key] for key in keys)
         ranked = [
             SearchHit(
                 capability,
