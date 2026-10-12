@@ -185,6 +185,7 @@ def _record(args: argparse.Namespace) -> int:
     if evidence not in {"yes", "no", "na"}:
         raise PilotError("evidence-inspectable must be yes, no, or na")
     scorecard_path = Path(args.scorecard)
+    _secure_directory(scorecard_path.parent)
     rows: list[dict[str, Any]] = []
     if scorecard_path.exists():
         try:

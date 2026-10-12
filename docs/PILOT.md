@@ -152,20 +152,20 @@ The stdlib-only `scripts/pilot.py` helper keeps the frozen protocol and scorecar
 rows local. Freeze the dated protocol after consent and before the first task:
 
 ```sh
-.venv/bin/python scripts/pilot.py freeze pilot-data --tasks 3 --seed 7 --consent-confirmed
+python3 scripts/pilot.py freeze pilot-data --tasks 3 --seed 7 --consent-confirmed
 ```
 
 Record one sanitized row per arm and task, then inspect the aggregate output:
 
 ```sh
-.venv/bin/python scripts/pilot.py record pilot-data/scorecard.jsonl \
+python3 scripts/pilot.py record pilot-data/scorecard.jsonl \
   --protocol pilot-data/protocol-YYYY-MM-DD.json --participant P01 --task T1 \
   --arm native --category informational --acceptable clarify \
   --decision clarify --correct yes --unsafe-actionable no --safety-stop no \
   --unauthorized-action no --privacy-breach no --evidence-inspectable na \
   --route-seconds unavailable --steps 2 --tool-calls unavailable --tokens unavailable
-.venv/bin/python scripts/pilot.py summarize pilot-data/scorecard.jsonl > summary.json
-.venv/bin/python scripts/pilot.py pool summary.json other-summary.json
+python3 scripts/pilot.py summarize pilot-data/scorecard.jsonl > summary.json
+python3 scripts/pilot.py pool summary.json other-summary.json
 ```
 
 It stores only participant/task codes and sanitized scorecard fields locally;
