@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .discovery import _frontmatter
+from .lifecycle import SUPPORTED_HARNESSES
 from .path_safety import unsafe_skill_file
 
 _NAME_PATTERN = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -18,7 +19,6 @@ DEFAULT_DESCRIPTION_MAX = 1024
 AGENT_SKILLS_FIELDS = frozenset(
     {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
 )
-SUPPORTED_HARNESSES = frozenset({"claude", "codex", "opencode", "agents"})
 
 
 @dataclass(frozen=True)
