@@ -116,14 +116,14 @@ def guided_init(
 
         if not exists:
             next_action = "Skill root does not exist yet; create it or remove it from config."
+        elif root.name in trust_names and trust != "local":
+            if reason := unsafe_skill_root(path):
+                raise PermissionError(f"trusted skill root is unsafe: {reason}")
+            trust, trusted_by = "local", "operator"
         elif front_door_verified:
             pass
         elif trust != "local":
-            if root.name in trust_names:
-                if reason := unsafe_skill_root(path):
-                    raise PermissionError(f"trusted skill root is unsafe: {reason}")
-                trust, trusted_by = "local", "operator"
-            elif skill_count and prompter is not None and prompter(root, skill_count):
+            if skill_count and prompter is not None and prompter(root, skill_count):
                 if reason := unsafe_skill_root(path):
                     raise PermissionError(f"trusted skill root is unsafe: {reason}")
                 trust, trusted_by = "local", "prompt"

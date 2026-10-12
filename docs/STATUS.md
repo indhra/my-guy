@@ -7,7 +7,7 @@ Updated: 2026-09-30. [`v0.1.0`](https://github.com/indhra/my-guy/releases/tag/v0
 - Harness-neutral capability model, bounded local `SKILL.md` metadata discovery, SQLite catalog, and source-aware routing to `clarify`, `recommend`, or `convene`.
 - Explicit trust filtering, collision and stale-entry handling, confidence gates, preserved dissent, and adapter allowlists.
 - Structured handoffs for Codex, Claude Code, OpenCode, and OpenRouter. They do not invoke a provider or make a model/network call.
-- `my-guy` CLI with a bundled front-door skill and reversible host install, upgrade, disable, and rollback. The installer verifies that bundled front door by receipt and digest; initialization never trusts a root automatically.
+- `my-guy` CLI with a bundled front-door skill and reversible host install, upgrade, disable, and rollback.
 - Opt-in feedback ledger that does not store raw requests and only proposes reviewed changes.
 
 An earlier local alpha review recorded 58 passing tests and closed its critical/high findings. The candidate passed 200 local tests. The fixed 208-case synthetic routing corpus scored 208/208 labeled decisions with 0/114 unsafe actionable suggestions. This bounded result does not establish safety or better routing on real requests.

@@ -81,6 +81,27 @@ def test_verified_bundled_only_root_is_reported_without_auto_trust(tmp_path, mon
     assert report.next_actions == ()
 
 
+def test_explicit_trust_honors_verified_bundled_root(tmp_path, monkeypatch):
+    root = tmp_path / "claude" / "skills"
+    root.mkdir(parents=True)
+    installer = _installer(tmp_path)
+    installer.install("claude", root)
+    monkeypatch.setattr(
+        onboarding, "standard_skill_roots", lambda: _harness_roots(tmp_path, root)
+    )
+    monkeypatch.setattr(onboarding, "default_roots", lambda **kw: ())
+    config = RouterConfig(roots=(SkillRoot("claude", str(root), hosts=("claude",)),))
+
+    new_config, report = guided_init(
+        config, installer=installer, trust_names=("claude",)
+    )
+
+    assert new_config.roots[0].trust == "local"
+    assert report.roots[0].trusted_by == "operator"
+    assert report.roots[0].front_door_verified is True
+    assert report.next_actions == ()
+
+
 def test_modified_bundled_root_is_not_front_door_verified(tmp_path, monkeypatch):
     root = tmp_path / "claude" / "skills"
     root.mkdir(parents=True)
