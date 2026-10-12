@@ -146,6 +146,32 @@ arm-order method, and these decisions in a dated local copy:
 
 Zero scorable matched pairs leaves the main-pilot route gate unmet and supports no superiority claim.
 
+## Local tooling
+
+The stdlib-only `scripts/pilot.py` helper keeps the frozen protocol and scorecard
+rows local. Freeze the dated protocol after consent and before the first task:
+
+```sh
+python3 scripts/pilot.py freeze pilot-data --tasks 3 --seed 7 --consent-confirmed
+```
+
+Record one sanitized row per arm and task, then inspect the aggregate output:
+
+```sh
+python3 scripts/pilot.py record pilot-data/scorecard.jsonl \
+  --protocol pilot-data/protocol-YYYY-MM-DD.json --participant P01 --task T1 \
+  --arm native --category informational --acceptable clarify \
+  --decision clarify --correct yes --unsafe-actionable no --safety-stop no \
+  --unauthorized-action no --privacy-breach no --evidence-inspectable na \
+  --route-seconds unavailable --steps 2 --tool-calls unavailable --tokens unavailable
+python3 scripts/pilot.py summarize pilot-data/scorecard.jsonl > summary.json
+python3 scripts/pilot.py pool summary.json other-summary.json
+```
+
+It stores only participant/task codes and sanitized scorecard fields locally;
+with consent, share only the aggregate output from `summarize`, never raw
+prompts or scorecard rows.
+
 Publish aggregate dispositions for **all consenting, nonwithdrawn** attempts:
 separate observational dry-run tasks, unscorable main-pilot tasks (including
 failed pair verification), and scorable matched pairs. For each group, report
