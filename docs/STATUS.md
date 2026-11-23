@@ -1,38 +1,36 @@
 # Agent Router Status
 
-Updated: 2026-09-22
-Branch: `work/router-foundation`
+Updated: 2026-09-25
+Branch: `work/agent-inventory-routing`
 
 ## Delivered
 
-- Harness-neutral capability model, checked-in registry, and SQLite telephone directory.
-- Read-only, bounded `SKILL.md` discovery with multiline metadata support, stable namespaces, collision protection, and unverified-by-default roots.
-- Transparent routing with `clarify`, `recommend`, and `convene` outcomes.
-- Trust filtering, confidence gates, quorum synthesis, visible failures, and preserved dissent.
-- Exact execution binding, adapter allowlists, and structured Codex, Claude, OpenCode, and OpenRouter handoffs.
-- `my-guy` CLI and portable front-door skill.
-- Reversible install, upgrade, disable, and rollback for local skill hosts.
-- Opt-in, raw-request-free feedback ledger producing review-only proposals.
-- Packaging metadata, MIT license, CI matrix, architecture and operations documentation.
-- Adversarial coverage for malicious metadata, forged/replayed approval, shadowing, symlink targets, and privacy defaults.
+- Harness-neutral capability records, checked-in seed registry, and SQLite catalog.
+- Bounded, read-only inventory of skill metadata and static agent definitions for Codex, Claude Code, and OpenCode.
+- Static discovery of supported enabled Codex and Claude Code plugin installs; OpenCode agent definitions are read from files and JSON/JSONC configuration.
+- Per-capability host and kind metadata, trust filtering, cross-host matching, and prepared handoffs that require a separate approval before any execution.
+- Transparent `clarify`, `recommend`, and `convene` decisions, evidence reporting, and stale catalog reconciliation.
+- Typed Codex, Claude Code, OpenCode, and OpenRouter handoff adapters. They do not start providers or run specialist instructions.
+- Reversible front-door skill lifecycle, opt-in review-only feedback, and adversarial coverage for metadata, trust, approval, and path boundaries.
 
-## Evidence
+## Verification
 
-- Current local suite: `58 passed`.
-- Live clean-install CLI smoke returns `clarify` for an unverified seed; an explicitly trusted installed security skill returns `recommend`.
-- Provider adapters do not start subprocesses or perform network calls.
+- Local suite: **81 passed**.
+- CLI smoke: an explicitly trusted, host-scoped agent can be inventoried and recommended for a matching request.
+- Inventory and adapter fixtures cover standard host roots, active-plugin filtering, metadata limits, catalog migration, and prepared cross-host output.
+- No provider subprocesses or network calls are made by adapters.
 
-## Honest limits before a stable release
+## Limits
 
-- No real provider execution or identity verification.
-- No universal one-click installation because each host owns a different skill root and OpenRouter is not a skill host.
-- No embedding backend; semantic interface labels itself `lexical-fallback`.
-- No production telemetry backend or fleet administration.
-- Visual design review is not applicable: this repository has no rendered UI.
-- Alpha until independent end-to-end, architecture, and security reviews close all high-severity findings.
+- Inventory is static and bounded; it is not a universal or complete view of runtime capabilities.
+- OpenCode plugins can register or transform agents and other capabilities at runtime. Those results are not visible to this filesystem scanner and are out of scope ([OpenCode plugin documentation](https://opencode.ai/v2/docs/build/plugins)).
+- Discovery treats metadata and instructions as untrusted data. New and discovered roots default to `unverified`; an operator may explicitly register a reviewed root as `local`.
+- Handoffs are prepared records only. Provider execution, provider identity verification, authenticated approval, and durable remote audit are not implemented.
+- Retrieval uses the transparent lexical baseline; there is no embedding backend or production telemetry service.
 
 ## Next release gates
 
-1. Open a pull request when a remote and target branch are available.
-2. Keep provider execution disabled until identity, authenticated approval, rate limits, and provider-specific authorization tests exist.
-3. Run a full screenshot-based GStack design review only if a rendered UI is introduced.
+1. Complete independent architecture and security review; resolve high-severity findings.
+2. Keep provider execution disabled until provider identity, authenticated approval, rate limits, and authorization tests exist.
+3. Run the supported Python-version and package-build matrix on the release candidate.
+4. Record hosted CI and review state before tagging; do not auto-merge or auto-publish.

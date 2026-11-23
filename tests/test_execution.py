@@ -6,6 +6,7 @@ from router.models import Capability, RouteDecision
 
 
 class FakeAdapter:
+    harness = "codex"
     allowed_invocations = frozenset({"skill:security"})
 
     def __init__(self):
@@ -48,3 +49,23 @@ def test_execution_rejects_unverified_and_unallowlisted_capabilities():
     unsupported = Capability("other", "ecc", "Other", (), ("security",), "skill:other", "local")
     with pytest.raises(PermissionError):
         execute(decision(), unsupported, "Review security.", ApprovalToken.for_execution(decision(), unsupported, "Review security."), adapter)
+
+
+@pytest.mark.parametrize("harness", [None, "openrouter"])
+def test_unknown_adapter_cannot_render_host_restricted_capability(harness):
+    class Adapter:
+        allowed_invocations = frozenset({"skill:security"})
+
+        def invoke(self, invocation, request):
+            raise AssertionError("restricted capability must not reach adapter")
+
+    adapter = Adapter()
+    if harness is not None:
+        adapter.harness = harness
+    capability = Capability(
+        "security", "ecc", "Security review", (), ("security",),
+        "skill:security", "local", hosts=("claude",),
+    )
+    approval = ApprovalToken.for_execution(decision(), capability, "Review security.")
+    with pytest.raises(PermissionError, match="host is unknown"):
+        execute(decision(), capability, "Review security.", approval, adapter)

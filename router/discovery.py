@@ -38,17 +38,31 @@ def _frontmatter(text: str) -> dict[str, str]:
 
 
 def discover_skills(roots: list[str | Path]) -> tuple[Capability, ...]:
-    """Discover skill metadata without executing skill instructions."""
+    """Discover bounded skill metadata without executing skill instructions."""
+    import os
+
     capabilities: list[Capability] = []
     for root in roots:
         root_path = Path(root).expanduser()
-        if not root_path.exists():
+        if not root_path.is_dir() or root_path.is_symlink():
             continue
-        for count, path in enumerate(sorted(root_path.rglob("SKILL.md"))):
-            if count >= MAX_SKILLS_PER_ROOT:
+        found = 0
+        directories = 0
+        for directory, subdirs, files in os.walk(root_path, followlinks=False):
+            directories += 1
+            if directories > MAX_SKILLS_PER_ROOT:
                 break
+            subdirs[:] = sorted(name for name in subdirs
+                                if name.lower() not in {".git", ".trash", "trash", "node_modules", "__pycache__"}
+                                and not (Path(directory) / name).is_symlink())
+            if "SKILL.md" not in files:
+                continue
+            path = Path(directory) / "SKILL.md"
             if path.is_symlink():
                 continue
+            found += 1
+            if found > MAX_SKILLS_PER_ROOT:
+                break
             try:
                 if path.stat().st_size > MAX_SKILL_BYTES:
                     continue
@@ -59,19 +73,14 @@ def discover_skills(roots: list[str | Path]) -> tuple[Capability, ...]:
             description = metadata.get("description")
             if not name or not description:
                 continue
-            source = str(path.parent)
             try:
-                capability = Capability(
-                    id=name,
-                    source=source,
-                    description=description,
-                    domains=(),
-                    triggers=tuple(_keywords(f"{name} {description}")),
+                capabilities.append(Capability(
+                    id=name, source=str(path.parent), description=description,
+                    domains=(), triggers=tuple(_keywords(f"{name} {description}")),
                     invocation=f"skill:{name}",
-                )
+                ))
             except ValueError:
                 continue
-            capabilities.append(capability)
     return tuple(capabilities)
 
 
@@ -113,3 +122,8 @@ def _keywords(text: str) -> list[str]:
     stopwords = {"a", "an", "and", "for", "from", "in", "of", "the", "to", "use", "when"}
     words = re.findall(r"[a-z0-9]+", text.lower())
     return list(dict.fromkeys(word for word in words if len(word) > 3 and word not in stopwords))
+
+
+# Keep the public discovery API in one module while the bounded inventory
+# scanners live separately from the original skill parser.
+from .inventory import discover_inventory  # noqa: E402

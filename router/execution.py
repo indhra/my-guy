@@ -6,6 +6,8 @@ from typing import Protocol
 from .approval import ApprovalRequired
 from .models import Capability, RouteDecision
 
+CANONICAL_HOSTS = frozenset({"codex", "claude", "opencode"})
+
 
 @dataclass(frozen=True)
 class ApprovalToken:
@@ -18,6 +20,8 @@ class ApprovalToken:
         payload = json.dumps(
             {
                 "capability_id": capability.id,
+                "capability_kind": capability.kind,
+                "capability_hosts": capability.hosts,
                 "candidates": decision.candidates,
                 "decision_request": decision.request,
                 "invocation": capability.invocation,
@@ -56,6 +60,12 @@ def execute(
         raise PermissionError("clarification decisions cannot be executed")
     if capability.id not in decision.candidates:
         raise PermissionError("capability is not one of the approved route candidates")
+    adapter_host = getattr(adapter, "harness", None)
+    if adapter_host in CANONICAL_HOSTS:
+        if adapter_host not in capability.hosts:
+            raise PermissionError("adapter host is not available for this capability")
+    elif not CANONICAL_HOSTS.issubset(capability.hosts):
+        raise PermissionError("adapter host is unknown for a host-restricted capability")
     if approval is None or not approval.matches(decision, capability, request):
         raise ApprovalRequired("matching explicit approval is required before execution")
     if capability.invocation not in adapter.allowed_invocations:

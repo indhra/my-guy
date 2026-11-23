@@ -2,77 +2,35 @@
 
 ## Goal
 
-Provide one memorable front door that clarifies intent, discovers relevant
-capabilities, routes to one or more specialists, synthesizes disagreement, and
-asks for approval before execution.
+Provide one front door that clarifies intent, discovers relevant skills and agents, routes one or more specialists, preserves disagreement, and stops at an explicit approval boundary.
 
-## End-to-end phases
+## Delivered foundation
 
-1. **Foundation and evidence** — research existing routers and record sources.
-   Done. This prevents reinventing an existing workflow.
-2. **Transparent core** — capability model, seed registry, read-only advisor,
-   and SQLite catalog. Done. This gives us a testable baseline before any
-   automation.
-3. **Trust hardening** — validate provenance, trust levels, invocation
-   references, collisions, limits, normalization, and unreadable files.
-   Required before routing can influence execution.
-4. **Routing evaluation** — expand fixtures for clear, ambiguous, adversarial,
-   cross-domain, and no-match requests. Add confidence calibration and source
-   evidence. This measures whether routing is correct rather than plausible.
-5. **Discovery and synchronization** — ingest local and installed skills,
-   agents, `AGENTS.md`, and supported manifests with stale-entry detection.
-   This makes the directory stay current after installation.
-6. **Retrieval backends** — keep SQLite lexical search as the baseline, then
-   add an optional semantic backend with identical result/evidence contracts.
-   This improves recall without making embeddings mandatory.
-7. **Convene mode** — bounded specialist fan-out, preserved disagreement,
-   timeout/failure handling, and explicit synthesis. No fake consensus.
-   Pure synthesis contract is now implemented; adapter fan-out remains later.
-8. **Approval and execution boundary** — implement an adapter-neutral approval
-   protocol. Only adapters may invoke tools, and only after approval.
-   Core allowlisting and matching approval tokens are now implemented.
-9. **Harness adapters** — Codex, Claude, OpenCode, OpenRouter, and project
-   instruction surfaces. Each adapter runs the same fixtures and remains thin.
-   Codex, Claude, OpenCode, and OpenRouter structured handoff adapters are now
-   implemented; provider execution is intentionally outside the core.
-10. **Adversarial review and release** — prompt-injection tests, architecture
-    review, security review, install/rollback tests, documentation, and a
-    versioned release.
+1. **Evidence and transparent core:** harness-neutral capability records, checked-in seed registry, SQLite catalog, lexical evidence, and `clarify` / `recommend` / `convene` decisions.
+2. **Trust and synchronization:** bounded read-only discovery, stable identities, collision and symlink protections, trust filtering, stale-entry reconciliation, and opt-in review-only feedback.
+3. **Host-aware static inventory:** Codex, Claude Code, and OpenCode skill and agent metadata, supported enabled Codex/Claude Code plugin installations, and explicit host-scoped custom roots.
+4. **Prepared handoff:** requesting-host routing, cross-host match evidence, and structured handoff records that require separate operator approval. Codex, Claude Code, OpenCode, and OpenRouter adapters remain handoff renderers; they do not execute providers.
+5. **Compatibility and evidence:** old catalog fields migrate with safe capability defaults; host, plugin-state, trust, routing, handoff, and migration fixtures are covered. Current local suite: **81 passed**.
+
+## Remaining work
+
+- Complete independent architecture and security review, and close high-severity findings before stable release.
+- Improve routing evaluation and confidence calibration using reviewed fixtures and source evidence.
+- Consider an optional semantic retrieval backend only if it preserves the same capability and evidence contract.
+- Design real specialist/provider execution separately, with authenticated identity, authorization, rate limits, and an explicit approval protocol. Do not infer execution support from prepared handoffs.
+- Add telemetry or fleet management only after privacy and deployment requirements are defined.
 
 ## Non-goals
 
-- Replacing specialist skills.
-- Automatically executing edits or external actions.
-- Claiming consensus when only one specialist responded.
-- Making provider-specific behavior part of the core contract.
+- Replacing specialist skills or claiming a complete inventory of every runtime capability.
+- Executing edits, tools, external actions, or provider requests as part of a route.
+- Claiming consensus when only one specialist responds.
+- Making provider-specific behavior part of the core routing contract.
 
 ## Acceptance gates
 
-- Every route cites the matched capability and source.
-- Low-confidence or conflicting routes ask a clarifying question.
-- Execution always stops at an explicit approval gate.
-- The same fixtures pass through every adapter.
-
-## Definition of done
-
-- A user can invoke one front door from each supported harness.
-- The router can clarify, recommend, or convene with cited evidence.
-- The catalog reflects installed capabilities and marks stale/untrusted ones.
-- No specialist or tool is invoked without the approval protocol.
-- All adapters pass the shared routing and adversarial fixture suite.
-- Installation, upgrade, disable, and rollback are documented and tested.
-
-## Directory contract
-
-Each entry has a stable name, source, description, trigger vocabulary,
-invocation reference, and trust level. Search has no hidden top-N cutoff;
-callers choose a limit when they want one. The first backend is SQLite with
-transparent lexical scoring. Future semantic search must return the same entry
-shape plus evidence for its ranking.
-
-## Measured evolution
-
-Collect opt-in route outcomes, user corrections, specialist usefulness,
-disagreement, and failure reasons. Recalibrate thresholds and registry
-metadata through reviewed, versioned, reversible changes. The router must not
-rewrite its own policy or install capabilities autonomously.
+- Each actionable route exposes its source, trust, kind, and host scope.
+- Unknown or unverified provenance cannot become an actionable route; unknown host scope cannot be sent through a host-restricted adapter.
+- Low-confidence or ambiguous requests clarify; cross-host results are explicitly marked as prepared handoffs requiring operator approval.
+- Inventory and routing fixtures cover supported host roots, active-plugin filtering, migrations, collisions, and adversarial metadata.
+- Installation lifecycle, recovery, inventory limits, and known static-inventory gaps are documented.

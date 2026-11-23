@@ -13,7 +13,7 @@ Skill collections such as ECC, GStack, and other agent packs each know their own
 Python 3.11+ is required.
 
 ```bash
-python -m pip install .
+python3 -m pip install .
 my-guy "Review this authentication design for security and privacy"
 my-guy route --json -- "I have a vague product idea"
 my-guy list security
@@ -65,7 +65,7 @@ my-guy proposals --minimum-samples 5
 
 ## Safety boundaries
 
-- Discovery reads `SKILL.md` metadata only; it never executes skill bodies.
+- Inventory reads bounded skill, agent, and supported enabled-plugin metadata; it never executes skill or agent instructions. OpenCode runtime plugin registrations are outside the static scan.
 - Unverified entries cannot produce actionable routes.
 - Adapters render handoffs and enforce invocation allowlists; they do not spawn subprocesses or call networks.
 - Approval bindings prevent accidental substitution inside the trusted process. They are not authentication against malicious code in that process.
